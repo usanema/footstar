@@ -1,0 +1,31 @@
+1. Zgodnie z rekomendacją : 
+W MVP ograniczamy się jedynie do informacji na temat boisk
+(adres + url do map google , miasto, typ nawierzchni, wymiary, 
+oświetlenie, godziny otwarcia, cena za godzine, zdjęcie obiektu zaciągniete z wizytówki google). 
+Rezerwacja jest dokonywana telefonicznie.
+
+2. Zgodnie z rekomendacją - zastosujmy prostą tablicę ogłoszeń ("Szatnia") przypisaną do konkretnego meczu, 
+gdzie organizator może zamieszczać komunikaty typu "push" (one-way)
+
+3. Inteligentny podział na zespoły przy pierwszym meczu będzie bazował na samoocenie piłkarzy. Kolejne losowanie zespołów
+będzie odbywać się na podstawie : 
+- przyznanych punktów od innych graczy 
+- ilości strzelonych goli 
+- ilości wygranych meczów
+Z tych trzech parametrów z odpowiednimi wagami bedzie budowany wskaźnik "oceny" piłkarza. 
+
+4. Osoba która deklaruje płatność będzie odznaczać osoby które zapłaciły. Płatność będzie odbywać się BLIKiem. 
+5. Kazdy gracz otrzyma punkty za udział w meczu i będzie mogła anonimowo przyznać punkty innym graczom po meczu. 
+Dobrym pomysłem jest okienko czasowe 24h. Ocena gracza będzie dostępna dla wszystkich po upływie tego 24h 
+( bez względu na to czy osoba oddała głos czy nie ).
+6. Zapraszanie do grupy będzie odbywać się poprzez wysłanie unikalnego linku. 
+7. Chcę aplikację napisać tak aby była mozliwosc uruchomienia jej w wersji webowej oraz wersji mobilnej. Takie rozwiązanie oferuje Flutter. Jedna aplikacja i wszystkie platformy. 
+8. Przeprowadzenie i zamknięcie (wprowadzenie wyniku) 3 meczów przez nową grupę w ciągu 30 dni od jej utworzenia
+9. W przypadku gdy brakuje graczy widzę dwie opcje : 
+- wysyłanie zaproszenia do grupy i stworzenie quick profilu ( z imieniem oraz informacją do osoby kontaktowej z grupy która zaprosiła osobę)
+- jeeli nie znalazłyby się osoby do gry mimo wysłania zaproszenia to organizator moze anulować mecz
+10. Statystyki : 
+- wynik meczu 
+- ilosc strzelonych goli
+- MVP
+Nie bierzemy pod uwage kartek, asyst oraz fauli.
