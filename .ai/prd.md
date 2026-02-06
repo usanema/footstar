@@ -4,7 +4,7 @@
 **FootStar** to aplikacja mobilna (Flutter) oraz webowa (PWA), której celem jest kompleksowe wsparcie amatorskich grup piłkarskich w organizacji meczów. System eliminuje chaos komunikacyjny związany z umawianiem spotkań, zbieraniem składu, wyborem boiska oraz rozliczaniem płatności. Dodatkowo wprowadza element grywalizacji poprzez system oceniania (ratingu), statystyki i automatyczne dobieranie zbalansowanych składów.
 
 -   **Platforma**: Flutter (iOS/Android) + PWA (Web).
--   **Backend**: Supabase (PostgreSQL + Auth + Edge Functions).
+-   **Backend**: Supabase + Java 21 + SpringBoot 3.0
 -   **Baza danych/Auth**: Supabase.
 -   **Główna wartość**: Zastąpienie chaotycznych wątków na Messengerze dedykowanym narzędziem typu "wszystko w jednym" dla organizatora i graczy.
 
