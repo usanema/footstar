@@ -1,16 +1,25 @@
-# footstars
+# FootStar
 
-A new Flutter project.
+This repository contains the source code for the FootStar application.
+
+## Structure
+
+- **footstar-frontend**: Flutter application (Mobile & Web).
+- **footstar-backend**: Java Spring Boot application (Backend API).
+- **doc**: Documentation and MVP details.
+- **backlog**: Project backlog configuration.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+### Frontend
+Navigate to `footstar-frontend` and run:
+```bash
+flutter run
+```
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Backend
+Navigate to `footstar-backend` and run:
+```bash
+mvn clean install
+java -jar target/footstars-backend-0.0.1-SNAPSHOT.jar
+```
