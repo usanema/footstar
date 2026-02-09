@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/app_constants.dart';
+import 'features/auth/presentation/auth_gate.dart';
+import 'features/auth/presentation/login_screen.dart';
+import 'features/auth/presentation/registration_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,9 +27,11 @@ class FootStarApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
-      home: const Scaffold(
-        body: Center(child: Text('FootStar Initialized')),
-      ),
+      home: const AuthGate(),
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegistrationScreen(),
+      },
     );
   }
 }

@@ -1,5 +1,5 @@
 class AppConstants {
-  // TODO: Replace with your actual Supabase URL and Anon Key
-  static const String supabaseUrl = 'YOUR_SUPABASE_URL';
-  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  static const String supabaseUrl = 'https://xloxicoextjrjnrybstl.supabase.co';
+  static const String supabaseAnonKey =
+      'sb_publishable_NkrpDD_AG-zoC9g0UTa4WQ_N-Fxr10I';
 }
