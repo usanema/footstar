@@ -7,11 +7,13 @@ import '../data/match_repository.dart';
 class TeamGenerationScreen extends StatefulWidget {
   final MatchModel match;
   final List<MatchPlayerModel> currentPlayers;
+  final bool isAdmin;
 
   const TeamGenerationScreen({
     super.key,
     required this.match,
     required this.currentPlayers,
+    this.isAdmin = false,
   });
 
   @override
@@ -27,7 +29,6 @@ class _TeamGenerationScreenState extends State<TeamGenerationScreen> {
   @override
   void initState() {
     super.initState();
-    // Filter only IN players for team generation
     _players = widget.currentPlayers
         .where((p) => p.status == PlayerStatus.IN)
         .toList();
@@ -42,7 +43,6 @@ class _TeamGenerationScreenState extends State<TeamGenerationScreen> {
     );
   }
 
-  // Calculate average rating for a list of players
   double _calculateAvgRating(List<MatchPlayerModel> teamPlayers) {
     if (teamPlayers.isEmpty) return 0.0;
     double total = 0;
@@ -51,7 +51,7 @@ class _TeamGenerationScreenState extends State<TeamGenerationScreen> {
         total += p.profile!.totalPoints;
       }
     }
-    return total / teamPlayers.length; // Raw average of total points
+    return total / teamPlayers.length;
   }
 
   List<MatchPlayerModel> get _teamA =>
@@ -62,9 +62,6 @@ class _TeamGenerationScreenState extends State<TeamGenerationScreen> {
   Future<void> _saveTeams() async {
     setState(() => _isLoading = true);
     try {
-      // Update each player's team in the DB
-      // Ideally this should be a batch update, but we'll loop for now or add a batch method to Repo
-      // For MVP, loop is okay for < 30 players
       for (var p in _players) {
         if (p.team != null) {
           await _repository.updatePlayerTeam(p.id, p.team!);
@@ -75,7 +72,7 @@ class _TeamGenerationScreenState extends State<TeamGenerationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Teams saved successfully!')),
         );
-        Navigator.pop(context, true); // Return true to refresh parent
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -95,28 +92,30 @@ class _TeamGenerationScreenState extends State<TeamGenerationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Team Generator'),
+        title: const Text('Team Board'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _isLoading ? null : _saveTeams,
-            tooltip: 'Save Teams',
-          ),
+          if (widget.isAdmin)
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _isLoading ? null : _saveTeams,
+              tooltip: 'Save Teams',
+            ),
         ],
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton.icon(
-              onPressed: _generateTeams,
-              icon: const Icon(Icons.auto_fix_high),
-              label: const Text('Generate Balanced Teams'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
+          if (widget.isAdmin)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton.icon(
+                onPressed: _generateTeams,
+                icon: const Icon(Icons.auto_fix_high),
+                label: const Text('Generate Balanced Teams'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
               ),
             ),
-          ),
           Expanded(
             child: Row(
               children: [
@@ -141,8 +140,12 @@ class _TeamGenerationScreenState extends State<TeamGenerationScreen> {
 
     return Expanded(
       child: DragTarget<MatchPlayerModel>(
-        onWillAccept: (data) => data != null && data.team != team,
+        onWillAccept: (data) {
+          if (!widget.isAdmin) return false; // Convert to boolean logic
+          return data != null && data.team != team;
+        },
         onAccept: (data) {
+          if (!widget.isAdmin) return;
           setState(() {
             final index = _players.indexWhere((p) => p.id == data.id);
             if (index != -1) {

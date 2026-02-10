@@ -134,24 +134,24 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
       appBar: AppBar(
         title: const Text('Match Details'),
         actions: [
-          if (widget.isAdmin)
-            IconButton(
-              icon: const Icon(Icons.group_work),
-              tooltip: 'Generate Teams',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => TeamGenerationScreen(
-                      match: widget.match,
-                      currentPlayers: _players,
-                    ),
+          IconButton(
+            icon: const Icon(Icons.group_work),
+            tooltip: 'Team Board',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TeamGenerationScreen(
+                    match: widget.match,
+                    currentPlayers: _players,
+                    isAdmin: widget.isAdmin, // Pass isAdmin status
                   ),
-                ).then((val) {
-                  if (val == true) _fetchMatchDetails();
-                });
-              },
-            ),
+                ),
+              ).then((val) {
+                if (val == true) _fetchMatchDetails();
+              });
+            },
+          ),
         ],
       ),
       body: RefreshIndicator(
