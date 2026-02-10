@@ -22,6 +22,11 @@ class ProfileModel {
   final String? favoriteClub;
   final String? favoritePlayer;
 
+  // Stats
+  final int strMatchesPlayed;
+  final int strMatchesWon;
+  final int strGoalsScored;
+
   ProfileModel({
     required this.id,
     this.firstName,
@@ -42,6 +47,9 @@ class ProfileModel {
     this.charisma = 1,
     this.favoriteClub,
     this.favoritePlayer,
+    this.strMatchesPlayed = 0,
+    this.strMatchesWon = 0,
+    this.strGoalsScored = 0,
   });
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
@@ -65,6 +73,9 @@ class ProfileModel {
       charisma: json['charisma'] as int? ?? 1,
       favoriteClub: json['favorite_club'] as String?,
       favoritePlayer: json['favorite_player'] as String?,
+      strMatchesPlayed: json['str_matches_played'] as int? ?? 0,
+      strMatchesWon: json['str_matches_won'] as int? ?? 0,
+      strGoalsScored: json['str_goals_scored'] as int? ?? 0,
     );
   }
 
@@ -89,10 +100,13 @@ class ProfileModel {
       'charisma': charisma,
       'favorite_club': favoriteClub,
       'favorite_player': favoritePlayer,
+      'str_matches_played': strMatchesPlayed,
+      'str_matches_won': strMatchesWon,
+      'str_goals_scored': strGoalsScored,
     };
   }
 
-  // Helper to calculate total points
+  // Helper to calculate total points (Basic sum, logic uses weighted service)
   int get totalPoints =>
       speed +
       technique +
