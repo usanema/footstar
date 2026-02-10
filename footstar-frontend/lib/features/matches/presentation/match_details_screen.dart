@@ -5,7 +5,9 @@ import '../data/models/match_model.dart';
 import '../data/models/match_player_model.dart';
 import 'tactical_pitch_screen.dart';
 
-import 'team_generation_screen.dart';
+import '../domain/services/team_balancer_service.dart';
+import 'widgets/team_composition_widget.dart';
+
 // Added this import based on the diff
 
 class MatchDetailsScreen extends StatefulWidget {
@@ -28,6 +30,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
 
   List<MatchPlayerModel> _players = []; // Changed from nullable
   bool _isLoading = true;
+  final TeamBalancerService _balancer = TeamBalancerService();
 
   MatchPlayerModel? get _currentUserPlayer {
     if (_currentUserId == null) return null;
@@ -74,13 +77,64 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
         matchId: widget.match.id,
         status: status,
       );
-      _fetchMatchDetails();
+
+      if (status == PlayerStatus.IN) {
+        await _autoBalanceTeams();
+      } else {
+        _fetchMatchDetails();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
+    }
+  }
+
+  Future<void> _autoBalanceTeams() async {
+    final players = await _repository.getMatchPlayers(widget.match.id);
+    final inPlayers = players
+        .where((p) => p.status == PlayerStatus.IN)
+        .toList();
+
+    final balanced = _balancer.balanceTeams(inPlayers);
+
+    if (mounted) {
+      setState(() {
+        _players = players.map((p) {
+          // If player is in balanced list, use that (with team assigned), else use original
+          final balancedPlayer = balanced.firstWhere(
+            (bp) => bp.id == p.id,
+            orElse: () => p,
+          );
+          return balancedPlayer;
+        }).toList();
+      });
+    }
+
+    for (var p in balanced) {
+      if (p.team != null) {
+        await _repository.updatePlayerTeam(p.id, p.team!);
+      }
+    }
+  }
+
+  Future<void> _onPlayerMoved(MatchPlayerModel player, Team targetTeam) async {
+    setState(() {
+      final index = _players.indexWhere((p) => p.id == player.id);
+      if (index != -1) {
+        _players[index] = _players[index].copyWith(team: targetTeam);
+      }
+    });
+    try {
+      await _repository.updatePlayerTeam(player.id, targetTeam);
+    } catch (e) {
+      _fetchMatchDetails();
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error moving player: $e')));
     }
   }
 
@@ -131,29 +185,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Match Details'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.group_work),
-            tooltip: 'Team Board',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => TeamGenerationScreen(
-                    match: widget.match,
-                    currentPlayers: _players,
-                    isAdmin: widget.isAdmin, // Pass isAdmin status
-                  ),
-                ),
-              ).then((val) {
-                if (val == true) _fetchMatchDetails();
-              });
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Match Details')),
       body: RefreshIndicator(
         onRefresh: _fetchMatchDetails,
         child: SingleChildScrollView(
@@ -167,6 +199,8 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
               _buildAttendanceControls(),
               const SizedBox(height: 24),
               _buildPlayerList(),
+              const SizedBox(height: 24),
+              _buildTeamComposition(),
             ],
           ),
         ),
@@ -334,6 +368,19 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildTeamComposition() {
+    final inPlayers = _players
+        .where((p) => p.status == PlayerStatus.IN)
+        .toList();
+    if (inPlayers.isEmpty) return const SizedBox.shrink();
+
+    return TeamCompositionWidget(
+      players: inPlayers,
+      isAdmin: widget.isAdmin,
+      onPlayerMoved: _onPlayerMoved, // Pass the callback
     );
   }
 }
