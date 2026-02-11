@@ -40,8 +40,9 @@
         - **Visual**: Hexagon/Radar Chart that morphs in real-time as sliders move.
     - **Feedback**: "Total Points" counter pulses Red (over limit) or Gold (perfect distribution).
 - **Position Selection**:
-    - **Interface**: 2D Mini-Pitch.
-    - **Action**: Tap zone on pitch (Attack, Midfield, Defense, Goal) to select.
+    - **Interface**: 2D Mini-Pitch (2/3 width) + Info Panel (1/3 width).
+    - **Action**: Tap zone on pitch to select **up to 3** positions (Primary, Secondary, Tertiary).
+    - **Feedback**: Zones light up, numbered 1-3. Info panel shows details for the last tapped position.
 
 ### Dashboard (Home Screen)
 - **Navigation**: "Dom" (Home) Tab.

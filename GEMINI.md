@@ -53,10 +53,16 @@ The repository is divided into two main components:
 - Post-match voting (Man of the Match).
 - Payment tracking.
 
-### Phase 6: UX/UI Overhaul (🚧 Planned Next)
-- **Goal**: "Effect WOW" & Premium Feel.
-- **Branding**: Integrate Logo (`assets/logo/footstar-logo.svg`) and Colors (`#00A86B`, `#FFD700`).
-- **Theme**: Custom `ThemeData` with modern fonts (Poppins/Montserrat) and styling.
+### Phase 6: UX/UI Overhaul (✅ Partially Completed)
+- [x] **Goal**: "Effect WOW" & Premium Feel.
+- [x] **Branding**: Integrate Logo (`assets/logo/footstar-logo.svg`) and Colors (`#00A86B`, `#FFD700`).
+- [x] **Theme**: Custom `ThemeData` with modern fonts (Poppins/Montserrat) and styling.
+- [x] **Screens Overhauled**:
+    - **Splash Screen**: Animated logo with "Neon Turf" glow.
+    - **Login/Register**: Dark mode, "Glassmorphism" fields, neon accents.
+    - **Onboarding**:
+        - **Skill Hexagon**: Interactive radar chart for attribute distribution.
+        - **Position Selector**: 2D Mini-Pitch with multi-selection (up to 3 positions).
 
 ## 5. Database Schema (Supabase)
 

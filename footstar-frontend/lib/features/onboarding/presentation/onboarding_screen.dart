@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/app_theme.dart';
 import '../../auth/presentation/widgets/stadium_background.dart';
 import 'widgets/skill_hexagon.dart';
+import 'widgets/position_selector.dart';
 import '../data/models/profile_model.dart';
 import '../data/profile_repository.dart';
 
@@ -23,9 +24,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _ageController = TextEditingController();
-  String? _positionPrimary;
-  String? _positionSecondary;
-  String? _positionTertiary;
+
+  // Positions List (Max 3)
+  List<String> _selectedPositions = [];
+
   String? _foot;
 
   // Step 2: Attributes (1-5), Budget 30
@@ -100,9 +102,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         age: int.tryParse(_ageController.text) ?? 18,
-        positionPrimary: _positionPrimary,
-        positionSecondary: _positionSecondary,
-        positionTertiary: _positionTertiary,
+
+        positionPrimary: _selectedPositions.isNotEmpty
+            ? _selectedPositions[0]
+            : null,
+        positionSecondary: _selectedPositions.length > 1
+            ? _selectedPositions[1]
+            : null,
+        positionTertiary: _selectedPositions.length > 2
+            ? _selectedPositions[2]
+            : null,
         foot: _foot,
         speed: _speed,
         technique: _technique,
@@ -170,7 +179,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildStep1() {
-    const positions = ['GK', 'DEF', 'MID', 'FWD'];
     const feet = ['LEFT', 'RIGHT', 'BOTH'];
 
     return Padding(
@@ -226,32 +234,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _positionPrimary,
-                style: AppTextStyles.bodyLarge,
-                dropdownColor: AppColors.surface,
-                decoration: const InputDecoration(
-                  labelText: 'PRIMARY POSITION',
+              // --- POSITION SELECTOR (MINI-PITCH) ---
+              Center(
+                child: PositionSelector(
+                  selectedPositions: _selectedPositions,
+                  onPositionsChanged: (positions) =>
+                      setState(() => _selectedPositions = positions),
                 ),
-                items: positions
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                    .toList(),
-                onChanged: (v) => setState(() => _positionPrimary = v),
-                validator: (v) => v == null ? 'Required' : null,
               ),
+              if (_selectedPositions.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Center(
+                    child: Text(
+                      'Select at least one position',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _positionSecondary,
-                style: AppTextStyles.bodyLarge,
-                dropdownColor: AppColors.surface,
-                decoration: const InputDecoration(
-                  labelText: 'SECONDARY POSITION (OPTIONAL)',
-                ),
-                items: positions
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                    .toList(),
-                onChanged: (v) => setState(() => _positionSecondary = v),
-              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _foot,
@@ -310,8 +313,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: remainingPoints < 0
-                        ? AppColors.error.withOpacity(0.2)
-                        : SkillHexagon.neonTurf.withOpacity(0.2), // Use Neon
+                        ? AppColors.error.withValues(alpha: 0.2)
+                        : SkillHexagon.neonTurf.withValues(
+                            alpha: 0.2,
+                          ), // Use Neon
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: remainingPoints < 0
@@ -425,7 +430,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             activeTrackColor: color,
             inactiveTrackColor: AppColors.surface,
             thumbColor: color,
-            overlayColor: color.withOpacity(0.2),
+            overlayColor: color.withValues(alpha: 0.2),
             trackHeight: 2.0, // Thinner lines as per "Neon Sliders (lines)"
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
           ),
