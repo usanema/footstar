@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/app_constants.dart';
-import 'features/auth/presentation/auth_gate.dart';
+import 'features/splash/presentation/splash_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/registration_screen.dart';
+
+import 'package:footstars/core/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,15 +25,15 @@ class FootStarApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'FootStar',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
-      ),
-      home: const AuthGate(),
+      // Force Dark Mode as per "Pitch Black" aesthetic
+      theme: AppTheme.darkTheme,
+      themeMode: ThemeMode.dark,
+      home: const SplashScreen(),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegistrationScreen(),
       },
+      debugShowCheckedModeBanner: false,
     );
   }
 }

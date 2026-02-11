@@ -23,30 +23,40 @@ The repository is divided into two main components:
     - **Personal Info**: Name, Age, Position (Primary/Secondary).
     - **Skill Assessment**: Users distribute **30 points** across 8 attributes (Speed, Technique, etc.).
     - **Data**: Stored in `profiles` table in Supabase.
+- **UX Improvements**:
+    - Submit Login on Enter key.
+    - Logout functionality.
 
-### Phase 2: Group Management (🚧 In Progress)
+### Phase 2: Group Management (✅ Completed)
 - **Create Group**: Users can create teams with a unique invite code.
-- **Discovery**: Public groups are searchable by name or city (Database & Repository ready).
+- **Discovery**: Public groups are searchable by name or city.
 - **Joining**:
     - Users request to join via Invite Code.
     - **Roles**: Owner (ADMIN) and Members (PLAYER).
     - **Status**: Membership requires Admin approval (`PENDING` -> `ACCEPTED`).
 - **Database**: `groups` and `group_members` tables created.
 
-### Phase 3: Match Organization (✅ Implemented / 🚧 In Progress)
+### Phase 3: Match Organization (✅ Completed)
 - [x] Creating matches (Venue, Date/Time).
 - [x] Attendance declaration (In/Out/Reserve).
 - [x] Tactical Pitch (Drag & Drop)
-- [ ] Weather Integration
-- [ ] Formation Templates
+- [x] **New:** Team Composition View Embedded in Match Details.
+- [ ] Weather Integration (Planned)
+- [ ] Formation Templates (Planned)
 
-### Phase 4: Gameplay & Algorithms (📅 Planned)
-- Team balancing algorithm based on player skills.
-- Team generation view.
+### Phase 4: Gameplay & Algorithms (✅ Completed)
+- **Auto-Balancing**: Algorithm automatically balances teams based on player skills when status is set to "IN".
+- **Team View**: Integrated directly into `MatchDetailsScreen`.
+- **Drag & Drop**: Admins can manually adjust teams.
 
 ### Phase 5: Stats & Payments (📅 Planned)
 - Post-match voting (Man of the Match).
 - Payment tracking.
+
+### Phase 6: UX/UI Overhaul (🚧 Planned Next)
+- **Goal**: "Effect WOW" & Premium Feel.
+- **Branding**: Integrate Logo (`assets/logo/footstar-logo.svg`) and Colors (`#00A86B`, `#FFD700`).
+- **Theme**: Custom `ThemeData` with modern fonts (Poppins/Montserrat) and styling.
 
 ## 5. Database Schema (Supabase)
 
