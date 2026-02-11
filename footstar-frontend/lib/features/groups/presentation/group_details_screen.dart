@@ -360,7 +360,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MatchDetailsScreen(match: match),
+                        builder: (_) =>
+                            MatchDetailsScreen(match: match, isAdmin: _isAdmin),
                       ),
                     );
                   },

@@ -5,8 +5,13 @@ import '../../onboarding/data/models/profile_model.dart';
 
 class TacticalPitchScreen extends StatefulWidget {
   final String matchId;
+  final List<MatchPlayerModel> players;
 
-  const TacticalPitchScreen({super.key, required this.matchId});
+  const TacticalPitchScreen({
+    super.key,
+    required this.matchId,
+    required this.players,
+  });
 
   @override
   State<TacticalPitchScreen> createState() => _TacticalPitchScreenState();
@@ -15,32 +20,34 @@ class TacticalPitchScreen extends StatefulWidget {
 class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
   final MatchRepository _repository = MatchRepository();
   List<MatchPlayerModel> _players = [];
-  bool _isLoading = true;
+  bool _isLoading = false; // Changed to false as we have initial data
 
   // Pitch dimensions for normalization
-  final double _pitchAspectRatio = 2 / 3; // Standard-ish vertical pitch
+  final double _pitchAspectRatio = 2 / 3;
 
   @override
   void initState() {
     super.initState();
+    _players = widget.players;
+    // Optionally refetch to ensure fresh data, but we can start with passed data
     _fetchPlayers();
   }
 
   Future<void> _fetchPlayers() async {
-    setState(() => _isLoading = true);
+    // setState(() => _isLoading = true); // Don't show full loading if we have data
     try {
       final players = await _repository.getMatchPlayers(widget.matchId);
-      setState(() {
-        _players = players.where((p) => p.status == PlayerStatus.IN).toList();
-      });
+      if (mounted) {
+        setState(() {
+          _players = players.where((p) => p.status == PlayerStatus.IN).toList();
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error refreshing players: $e')));
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -49,7 +56,6 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
     double x,
     double y,
   ) async {
-    // Optimistic update
     setState(() {
       final index = _players.indexWhere((p) => p.id == player.id);
       if (index != -1) {
@@ -64,7 +70,6 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
         y: y.clamp(0.0, 1.0),
       );
     } catch (e) {
-      // Revert if failed (requires keeping old state, simplified for now)
       _fetchPlayers();
     }
   }
@@ -77,6 +82,7 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
           ? const Center(child: CircularProgressIndicator())
           : LayoutBuilder(
               builder: (context, constraints) {
+                // ... (LayoutBuilder content)
                 return Column(
                   children: [
                     Expanded(
@@ -98,7 +104,6 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
                                 ),
                                 child: Stack(
                                   children: [
-                                    // Center Circle
                                     Center(
                                       child: Container(
                                         width: 80,
@@ -118,7 +123,6 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
                                         color: Colors.white70,
                                       ),
                                     ),
-                                    // Penalty Areas (Simplified)
                                     Align(
                                       alignment: Alignment.topCenter,
                                       child: Container(
@@ -168,31 +172,21 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
                                   ],
                                 ),
                               ),
-
-                              // Players on Pitch
-                              // We use the Draggable Area Wrapper for rendering tokens
-                              // But we need to handle "static" tokens if we don't want them draggable?
-                              // For now, all are draggable
-
-                              // Draggable Area Wrapper
                               LayoutBuilder(
                                 builder: (ctx, pitchConstraints) {
                                   return Stack(
                                     children: _players.map((player) {
-                                      // Defaults if not set (off-pitch logic to be handled separately)
-                                      // If pitchX is null, we don't render them ON the pitch via this loop?
-                                      // But loop iterates all players.
                                       if (player.pitchX == null ||
-                                          player.pitchY == null)
+                                          player.pitchY == null) {
                                         return const SizedBox.shrink();
+                                      }
 
                                       final x = player.pitchX!;
                                       final y = player.pitchY!;
 
                                       return Positioned(
                                         left:
-                                            x * pitchConstraints.maxWidth -
-                                            20, // Center token
+                                            x * pitchConstraints.maxWidth - 20,
                                         top:
                                             y * pitchConstraints.maxHeight - 20,
                                         child: Draggable<MatchPlayerModel>(
@@ -206,7 +200,6 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
                                             child: _buildPlayerToken(player),
                                           ),
                                           onDragEnd: (details) {
-                                            // Calculate new relative position
                                             final RenderBox box =
                                                 ctx.findRenderObject()
                                                     as RenderBox;
@@ -234,8 +227,6 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
                         ),
                       ),
                     ),
-
-                    // Unassigned Players / Bench
                     Expanded(
                       flex: 1,
                       child: Container(
@@ -256,11 +247,8 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
                                   .where((p) => p.pitchX == null)
                                   .map((player) {
                                     return InkWell(
-                                      onTap: () => _updatePosition(
-                                        player,
-                                        0.5,
-                                        0.5,
-                                      ), // Move to center
+                                      onTap: () =>
+                                          _updatePosition(player, 0.5, 0.5),
                                       child: _buildPlayerToken(player),
                                     );
                                   })
@@ -278,6 +266,10 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
   }
 
   Widget _buildPlayerToken(MatchPlayerModel player, [double scale = 1.0]) {
+    Color teamColor = Colors.white;
+    if (player.team == Team.A) teamColor = Colors.red.shade100;
+    if (player.team == Team.B) teamColor = Colors.blue.shade100;
+
     return Transform.scale(
       scale: scale,
       child: Column(
@@ -285,7 +277,7 @@ class _TacticalPitchScreenState extends State<TacticalPitchScreen> {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: Colors.white,
+            backgroundColor: teamColor,
             backgroundImage: player.profile?.avatarUrl != null
                 ? NetworkImage(player.profile!.avatarUrl!)
                 : null,

@@ -5,10 +5,20 @@ import '../data/models/match_model.dart';
 import '../data/models/match_player_model.dart';
 import 'tactical_pitch_screen.dart';
 
+import '../domain/services/team_balancer_service.dart';
+import 'widgets/team_composition_widget.dart';
+
+// Added this import based on the diff
+
 class MatchDetailsScreen extends StatefulWidget {
   final MatchModel match;
+  final bool isAdmin; // Added
 
-  const MatchDetailsScreen({super.key, required this.match});
+  const MatchDetailsScreen({
+    super.key,
+    required this.match,
+    this.isAdmin = false, // Default false
+  });
 
   @override
   State<MatchDetailsScreen> createState() => _MatchDetailsScreenState();
@@ -16,37 +26,44 @@ class MatchDetailsScreen extends StatefulWidget {
 
 class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   final MatchRepository _repository = MatchRepository();
-  final String _currentUserId = Supabase.instance.client.auth.currentUser!.id;
+  String? _currentUserId;
 
-  List<MatchPlayerModel>? _players;
+  List<MatchPlayerModel> _players = []; // Changed from nullable
   bool _isLoading = true;
-  MatchPlayerModel? _currentUserPlayer;
+  final TeamBalancerService _balancer = TeamBalancerService();
+
+  MatchPlayerModel? get _currentUserPlayer {
+    if (_currentUserId == null) return null;
+    try {
+      return _players.firstWhere((p) => p.profileId == _currentUserId);
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _fetchDetails();
+    _currentUserId =
+        Supabase.instance.client.auth.currentUser?.id; // Initialized here
+    _fetchMatchDetails(); // Renamed
   }
 
-  Future<void> _fetchDetails() async {
+  Future<void> _fetchMatchDetails() async {
     setState(() => _isLoading = true);
     try {
       final players = await _repository.getMatchPlayers(widget.match.id);
-      setState(() {
-        _players = players;
-        try {
-          _currentUserPlayer = players.firstWhere(
-            (p) => p.profileId == _currentUserId,
-          );
-        } catch (_) {
-          _currentUserPlayer = null;
-        }
-      });
+      if (mounted) {
+        setState(() {
+          _players = players;
+          // _currentUserPlayer logic removed, now derived in build
+        });
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading match details: $e')),
+        ); // Updated message
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -54,85 +71,153 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   }
 
   Future<void> _updateStatus(PlayerStatus status) async {
+    if (_currentUserId == null) return;
     try {
       await _repository.updatePlayerStatus(
         matchId: widget.match.id,
         status: status,
       );
-      _fetchDetails();
+
+      if (status == PlayerStatus.IN) {
+        await _autoBalanceTeams();
+      } else {
+        _fetchMatchDetails();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error updating status: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
 
+  Future<void> _autoBalanceTeams() async {
+    final players = await _repository.getMatchPlayers(widget.match.id);
+    final inPlayers = players
+        .where((p) => p.status == PlayerStatus.IN)
+        .toList();
+
+    final balanced = _balancer.balanceTeams(inPlayers);
+
+    if (mounted) {
+      setState(() {
+        _players = players.map((p) {
+          // If player is in balanced list, use that (with team assigned), else use original
+          final balancedPlayer = balanced.firstWhere(
+            (bp) => bp.id == p.id,
+            orElse: () => p,
+          );
+          return balancedPlayer;
+        }).toList();
+      });
+    }
+
+    for (var p in balanced) {
+      if (p.team != null) {
+        await _repository.updatePlayerTeam(p.id, p.team!);
+      }
+    }
+  }
+
+  Future<void> _onPlayerMoved(MatchPlayerModel player, Team targetTeam) async {
+    setState(() {
+      final index = _players.indexWhere((p) => p.id == player.id);
+      if (index != -1) {
+        _players[index] = _players[index].copyWith(team: targetTeam);
+      }
+    });
+    try {
+      await _repository.updatePlayerTeam(player.id, targetTeam);
+    } catch (e) {
+      _fetchMatchDetails();
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error moving player: $e')));
+    }
+  }
+
   Future<void> _toggleCar(bool? hasCar) async {
-    if (_currentUserPlayer == null) return;
+    final player = _currentUserPlayer;
+    if (player == null) return;
     try {
       await _repository.updatePlayerStatus(
         matchId: widget.match.id,
-        status: _currentUserPlayer!.status,
+        status: player.status,
         hasCar: hasCar,
-        carSeats: _currentUserPlayer!.carSeats,
+        carSeats: player.carSeats,
       );
-      _fetchDetails();
+      _fetchMatchDetails();
     } catch (e) {
-      // Error handling
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating car status: $e')),
+        );
+      }
     }
   }
 
   Future<void> _updateSeats(int seats) async {
-    if (_currentUserPlayer == null) return;
+    final player = _currentUserPlayer;
+    if (player == null) return;
     try {
       await _repository.updatePlayerStatus(
         matchId: widget.match.id,
-        status: _currentUserPlayer!.status,
-        hasCar: _currentUserPlayer!.hasCar,
+        status: player.status,
+        hasCar: player.hasCar,
         carSeats: seats,
       );
-      _fetchDetails();
+      _fetchMatchDetails();
     } catch (e) {
-      // Error handling
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating car seats: $e')));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Match Details')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _fetchDetails,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 24),
-                    _buildAttendanceControls(),
-                    const SizedBox(height: 24),
-                    if (_currentUserPlayer?.status == PlayerStatus.IN)
-                      _buildCarpoolingSection(),
-                    const SizedBox(height: 24),
-                    _buildPlayerList(),
-                    const SizedBox(height: 80), // Fab space
-                  ],
-                ),
-              ),
-            ),
+      body: RefreshIndicator(
+        onRefresh: _fetchMatchDetails,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 24),
+              _buildAttendanceControls(),
+              const SizedBox(height: 24),
+              _buildPlayerList(),
+              const SizedBox(height: 24),
+              _buildTeamComposition(),
+            ],
+          ),
+        ),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => TacticalPitchScreen(matchId: widget.match.id),
+              builder: (_) => TacticalPitchScreen(
+                matchId: widget.match.id,
+                players: _players
+                    .where((p) => p.status == PlayerStatus.IN)
+                    .toList(),
+              ),
             ),
-          );
+          ).then((_) => _fetchMatchDetails());
         },
         icon: const Icon(Icons.sports_soccer),
         label: const Text('Tactics Board'),
@@ -175,6 +260,10 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
 
     return Column(
       children: [
+        if (_currentUserPlayer?.status == PlayerStatus.IN) ...[
+          _buildCarpoolingSection(),
+          const SizedBox(height: 24),
+        ],
         const Text(
           'Are you playing?',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -242,8 +331,9 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   }
 
   Widget _buildPlayerList() {
-    final inPlayers =
-        _players?.where((p) => p.status == PlayerStatus.IN).toList() ?? [];
+    final inPlayers = _players
+        .where((p) => p.status == PlayerStatus.IN)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,6 +368,19 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildTeamComposition() {
+    final inPlayers = _players
+        .where((p) => p.status == PlayerStatus.IN)
+        .toList();
+    if (inPlayers.isEmpty) return const SizedBox.shrink();
+
+    return TeamCompositionWidget(
+      players: inPlayers,
+      isAdmin: widget.isAdmin,
+      onPlayerMoved: _onPlayerMoved, // Pass the callback
     );
   }
 }

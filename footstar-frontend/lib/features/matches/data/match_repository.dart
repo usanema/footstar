@@ -102,4 +102,11 @@ class MatchRepository {
         .update({'pitch_x': x, 'pitch_y': y})
         .eq('id', matchPlayerId);
   }
+
+  Future<void> updatePlayerTeam(String matchPlayerId, Team team) async {
+    await _supabase
+        .from('match_players')
+        .update({'team': team.name})
+        .eq('id', matchPlayerId);
+  }
 }

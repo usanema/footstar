@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../groups/data/group_repository.dart';
 import '../../groups/data/models/group_model.dart';
 import '../../groups/presentation/create_group_screen.dart';
@@ -55,6 +56,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const FindGroupScreen()),
               );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await Supabase.instance.client.auth.signOut();
             },
           ),
         ],

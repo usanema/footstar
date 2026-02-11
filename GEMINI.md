@@ -33,9 +33,12 @@ The repository is divided into two main components:
     - **Status**: Membership requires Admin approval (`PENDING` -> `ACCEPTED`).
 - **Database**: `groups` and `group_members` tables created.
 
-### Phase 3: Match Organization (📅 Planned)
-- Creating matches (Venue, Date/Time).
-- Attendance declaration (In/Out/Reserve).
+### Phase 3: Match Organization (✅ Implemented / 🚧 In Progress)
+- [x] Creating matches (Venue, Date/Time).
+- [x] Attendance declaration (In/Out/Reserve).
+- [x] Tactical Pitch (Drag & Drop)
+- [ ] Weather Integration
+- [ ] Formation Templates
 
 ### Phase 4: Gameplay & Algorithms (📅 Planned)
 - Team balancing algorithm based on player skills.
