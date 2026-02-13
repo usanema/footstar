@@ -3,21 +3,24 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/match_repository.dart';
 import '../data/models/match_model.dart';
 import '../data/models/match_player_model.dart';
-import 'tactical_pitch_screen.dart';
-
 import '../domain/services/team_balancer_service.dart';
-import 'widgets/team_composition_widget.dart';
+import '../domain/services/pitch_positioning_service.dart';
+import 'widgets/tactical_board_widget.dart';
+import 'widgets/bench_widget.dart'; // Added
 
-// Added this import based on the diff
+import 'package:footstars/core/app_theme.dart';
+import 'widgets/match_hero_section.dart';
+import 'widgets/status_selector.dart';
+import 'widgets/player_list_card.dart';
 
 class MatchDetailsScreen extends StatefulWidget {
   final MatchModel match;
-  final bool isAdmin; // Added
+  final bool isAdmin;
 
   const MatchDetailsScreen({
     super.key,
     required this.match,
-    this.isAdmin = false, // Default false
+    this.isAdmin = false,
   });
 
   @override
@@ -28,9 +31,10 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   final MatchRepository _repository = MatchRepository();
   String? _currentUserId;
 
-  List<MatchPlayerModel> _players = []; // Changed from nullable
+  List<MatchPlayerModel> _players = [];
   bool _isLoading = true;
   final TeamBalancerService _balancer = TeamBalancerService();
+  final PitchPositioningService _positioner = PitchPositioningService();
 
   MatchPlayerModel? get _currentUserPlayer {
     if (_currentUserId == null) return null;
@@ -41,12 +45,38 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
     }
   }
 
+  bool _isAdmin = false;
+
   @override
   void initState() {
     super.initState();
-    _currentUserId =
-        Supabase.instance.client.auth.currentUser?.id; // Initialized here
-    _fetchMatchDetails(); // Renamed
+    _currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    _isAdmin = widget.isAdmin;
+    if (!_isAdmin) {
+      _checkAdminStatus();
+    }
+    _fetchMatchDetails();
+  }
+
+  Future<void> _checkAdminStatus() async {
+    if (_currentUserId == null) return;
+    try {
+      final response = await Supabase.instance.client
+          .from('group_members')
+          .select('role')
+          .eq('group_id', widget.match.groupId)
+          .eq('profile_id', _currentUserId!)
+          .maybeSingle();
+
+      if (response != null && mounted) {
+        final role = response['role'] as String;
+        if (role == 'ADMIN') {
+          setState(() => _isAdmin = true);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking admin status: $e');
+    }
   }
 
   Future<void> _fetchMatchDetails() async {
@@ -56,14 +86,13 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
       if (mounted) {
         setState(() {
           _players = players;
-          // _currentUserPlayer logic removed, now derived in build
         });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading match details: $e')),
-        ); // Updated message
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -98,24 +127,35 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
         .where((p) => p.status == PlayerStatus.IN)
         .toList();
 
+    // 1. Balance Teams
     final balanced = _balancer.balanceTeams(inPlayers);
+
+    // 2. Assign Positions
+    final positioned = _positioner.assignPositions(balanced);
 
     if (mounted) {
       setState(() {
         _players = players.map((p) {
-          // If player is in balanced list, use that (with team assigned), else use original
-          final balancedPlayer = balanced.firstWhere(
+          final positionedPlayer = positioned.firstWhere(
             (bp) => bp.id == p.id,
             orElse: () => p,
           );
-          return balancedPlayer;
+          return positionedPlayer;
         }).toList();
       });
     }
 
-    for (var p in balanced) {
+    // 3. Save to DB
+    for (var p in positioned) {
       if (p.team != null) {
         await _repository.updatePlayerTeam(p.id, p.team!);
+      }
+      if (p.pitchX != null && p.pitchY != null) {
+        await _repository.updatePlayerPosition(
+          matchPlayerId: p.id,
+          x: p.pitchX!,
+          y: p.pitchY!,
+        );
       }
     }
   }
@@ -181,232 +221,211 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
 
+    final currentUserPlayer = _currentUserPlayer;
+    final currentStatus = currentUserPlayer?.status ?? PlayerStatus.UNKNOWN;
+
+    // Filter players for display
+    final inPlayers = _players
+        .where((p) => p.status == PlayerStatus.IN)
+        .toList();
+
+    final placedPlayers = inPlayers
+        .where((p) => p.pitchX != null && p.pitchY != null)
+        .toList();
+
+    final unplacedPlayers = inPlayers
+        .where((p) => p.pitchX == null || p.pitchY == null)
+        .toList();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Match Details')),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(
+          'MATCH HUB',
+          style: AppTextStyles.headlineSmall.copyWith(fontSize: 20),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      extendBodyBehindAppBar: true,
       body: RefreshIndicator(
         onRefresh: _fetchMatchDetails,
+        color: AppColors.primary,
+        backgroundColor: AppColors.surface,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
+              const SizedBox(height: 100), // Top spacing for AppBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: MatchHeroSection(
+                  match: widget.match,
+                  userStatus: currentStatus,
+                  onCheckIn: () => _updateStatus(PlayerStatus.IN),
+                ),
+              ),
               const SizedBox(height: 24),
-              _buildAttendanceControls(),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: StatusSelector(
+                  currentStatus: currentStatus,
+                  isLoading: _isLoading,
+                  onStatusChanged: (newStatus) => _updateStatus(newStatus),
+                ),
+              ),
               const SizedBox(height: 24),
-              _buildPlayerList(),
-              const SizedBox(height: 24),
-              _buildTeamComposition(),
+
+              // 3. Player List (The Squad) - Optional, maybe remove if redundant with Bench?
+              // The plan says "Embed Team Lists (Home/Away)" -> maybe Bench covers "unplaced".
+              // But what about "placed" players list?
+              // Existing 'PlayerListCard' shows everyone IN.
+              // Let's keep it for now as a "Roster".
+              if (_currentUserId != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: PlayerListCard(
+                    players: inPlayers,
+                    currentUserId: _currentUserId!,
+                    onToggleCar: (val) => _toggleCar(val),
+                    onUpdateSeats: (seats) => _updateSeats(seats),
+                    maxPlayers: widget.match.maxPlayers,
+                  ),
+                ),
+              if (_currentUserId != null) const SizedBox(height: 24),
+
+              // 4. Tactical Board (Pitch)
+              if (placedPlayers.isNotEmpty || unplacedPlayers.isNotEmpty) ...[
+                TacticalBoardWidget(
+                  players: placedPlayers,
+                  isAdmin: _isAdmin,
+                  currentUserId: _currentUserId,
+                  onPlayerMovedTeam: _onPlayerMoved,
+                  onPlayerMovedPitch: _updatePosition,
+                  onExpand: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TacticalBoardWidget(
+                          players: placedPlayers,
+                          isAdmin: _isAdmin,
+                          currentUserId: _currentUserId, // Passed here
+                          isFullScreen: true,
+                          onPlayerMovedTeam: _onPlayerMoved,
+                          onPlayerMovedPitch: _updatePosition,
+                        ),
+                      ),
+                    ).then((_) => _fetchMatchDetails());
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // 5. Bench (Unplaced)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: BenchWidget(
+                    players: unplacedPlayers,
+                    isAdmin: _isAdmin,
+                    currentUserId: _currentUserId,
+                    onPlayerDropped: _clearPosition,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 100),
             ],
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => TacticalPitchScreen(
-                matchId: widget.match.id,
-                players: _players
-                    .where((p) => p.status == PlayerStatus.IN)
-                    .toList(),
-              ),
-            ),
-          ).then((_) => _fetchMatchDetails());
-        },
-        icon: const Icon(Icons.sports_soccer),
-        label: const Text('Tactics Board'),
-      ),
     );
   }
 
-  Widget _buildHeader() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: Text(
-                '${widget.match.date.day}/${widget.match.date.month}/${widget.match.date.year}',
-              ),
-              subtitle: Text(
-                '${widget.match.date.hour}:${widget.match.date.minute.toString().padLeft(2, '0')}',
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.location_on),
-              title: Text(widget.match.location),
-            ),
-            if (widget.match.description != null)
-              ListTile(
-                leading: const Icon(Icons.description),
-                title: Text(widget.match.description!),
-              ),
-          ],
-        ),
-      ),
-    );
+  Future<void> _updatePosition(
+    MatchPlayerModel player,
+    double x,
+    double y,
+  ) async {
+    setState(() {
+      final index = _players.indexWhere((p) => p.id == player.id);
+      if (index != -1) {
+        _players[index] = _players[index].copyWith(pitchX: x, pitchY: y);
+      }
+    });
+
+    try {
+      await _repository.updatePlayerPosition(
+        matchPlayerId: player.id,
+        x: x.clamp(0.0, 1.0),
+        y: y.clamp(0.0, 1.0),
+      );
+    } catch (e) {
+      _fetchMatchDetails();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating position: $e')));
+      }
+    }
   }
 
-  Widget _buildAttendanceControls() {
-    final status = _currentUserPlayer?.status ?? PlayerStatus.UNKNOWN;
+  Future<void> _clearPosition(MatchPlayerModel player) async {
+    setState(() {
+      final index = _players.indexWhere((p) => p.id == player.id);
+      if (index != -1) {
+        // Create a copy with null pitchX/Y.
+        // Note: copyWith arguments are nullable, but if I pass null, does it set to null or keep existing?
+        // Usually copyWith(val: val ?? this.val) checks for null.
+        // If I want to FORCE null, I might need to change MatchPlayerModel copyWith logic or use a specific method.
+        // Let's check MatchPlayerModel copyWith.
+        // It does: pitchX: pitchX ?? this.pitchX.
+        // So passing null will NOT clear it.
+        // I need to modify MatchPlayerModel or use a workaround.
+        // For now, I'll assumre I can't easily clear it with copyWith unless I change it.
+        // Workaround: Use a sentinel value if needed, OR modify MatchPlayerModel.
+        // Best approach: Modofy MatchPlayerModel to allow clearing.
+        // Or direct assignment if mutable (it's final).
+        // I will modify MatchPlayerModel to accept a flag or nullable wrapper.
+        // OR better: Create a new instance manually.
+        _players[index] = MatchPlayerModel(
+          id: player.id,
+          matchId: player.matchId,
+          profileId: player.profileId,
+          status: player.status,
+          team: player.team,
+          pitchX: null,
+          pitchY: null,
+          hasCar: player.hasCar,
+          carSeats: player.carSeats,
+          profile: player.profile,
+        );
+      }
+    });
 
-    return Column(
-      children: [
-        if (_currentUserPlayer?.status == PlayerStatus.IN) ...[
-          _buildCarpoolingSection(),
-          const SizedBox(height: 24),
-        ],
-        const Text(
-          'Are you playing?',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _AttendanceButton(
-              label: 'IN',
-              color: Colors.green,
-              isSelected: status == PlayerStatus.IN,
-              onTap: () => _updateStatus(PlayerStatus.IN),
-            ),
-            _AttendanceButton(
-              label: 'OUT',
-              color: Colors.red,
-              isSelected: status == PlayerStatus.OUT,
-              onTap: () => _updateStatus(PlayerStatus.OUT),
-            ),
-            _AttendanceButton(
-              label: 'RESERVE',
-              color: Colors.orange,
-              isSelected: status == PlayerStatus.RESERVE,
-              onTap: () => _updateStatus(PlayerStatus.RESERVE),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCarpoolingSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            CheckboxListTile(
-              title: const Text('I can drive (have a car)'),
-              value: _currentUserPlayer?.hasCar ?? false,
-              onChanged: _toggleCar,
-            ),
-            if (_currentUserPlayer?.hasCar == true)
-              Row(
-                children: [
-                  const Text('Available Seats: '),
-                  IconButton(
-                    icon: const Icon(Icons.remove),
-                    onPressed: () =>
-                        _updateSeats((_currentUserPlayer?.carSeats ?? 0) - 1),
-                  ),
-                  Text('${_currentUserPlayer?.carSeats ?? 0}'),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () =>
-                        _updateSeats((_currentUserPlayer?.carSeats ?? 0) + 1),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlayerList() {
-    final inPlayers = _players
-        .where((p) => p.status == PlayerStatus.IN)
-        .toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Confirmed Players (${inPlayers.length}/${widget.match.maxPlayers})',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: inPlayers.length,
-          itemBuilder: (context, index) {
-            final player = inPlayers[index];
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundImage: player.profile?.avatarUrl != null
-                    ? NetworkImage(player.profile!.avatarUrl!)
-                    : null,
-                child: player.profile?.avatarUrl == null
-                    ? Text((player.profile?.firstName ?? '?')[0])
-                    : null,
-              ),
-              title: Text(
-                '${player.profile?.firstName} ${player.profile?.lastName}',
-              ),
-              trailing: player.hasCar
-                  ? Icon(Icons.directions_car, color: Colors.blue, size: 20)
-                  : null,
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTeamComposition() {
-    final inPlayers = _players
-        .where((p) => p.status == PlayerStatus.IN)
-        .toList();
-    if (inPlayers.isEmpty) return const SizedBox.shrink();
-
-    return TeamCompositionWidget(
-      players: inPlayers,
-      isAdmin: widget.isAdmin,
-      onPlayerMoved: _onPlayerMoved, // Pass the callback
-    );
-  }
-}
-
-class _AttendanceButton extends StatelessWidget {
-  final String label;
-  final Color color;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _AttendanceButton({
-    required this.label,
-    required this.color,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? color : Colors.grey[200],
-        foregroundColor: isSelected ? Colors.white : Colors.black,
-      ),
-      onPressed: onTap,
-      child: Text(label),
-    );
+    try {
+      // Repository needs a method to clear position.
+      // updatePlayerPosition takes double x, double y. Not nullable?
+      // I should check `MatchRepository`.
+      // If Supabase table allows null, I can send null.
+      // But `updatePlayerPosition` might require doubles.
+      await _repository.clearPlayerPosition(player.id);
+    } catch (e) {
+      _fetchMatchDetails();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error clearing position: $e')));
+      }
+    }
   }
 }

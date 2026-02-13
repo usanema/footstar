@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/app_theme.dart';
+import '../../auth/presentation/widgets/stadium_background.dart';
+import 'widgets/skill_hexagon.dart';
+import 'widgets/position_selector.dart';
 import '../data/models/profile_model.dart';
 import '../data/profile_repository.dart';
 
@@ -20,20 +24,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _ageController = TextEditingController();
-  String? _positionPrimary;
-  String? _positionSecondary;
-  String? _positionTertiary;
+
+  // Positions List (Max 3)
+  List<String> _selectedPositions = [];
+
   String? _foot;
 
   // Step 2: Attributes (1-5), Budget 30
-  int _speed = 1;
-  int _technique = 1;
-  int _stamina = 1;
-  int _defense = 1;
-  int _shooting = 1;
-  int _tactics = 1;
-  int _vision = 1;
-  int _charisma = 1;
+  int _speed = 0;
+  int _technique = 0;
+  int _stamina = 0;
+  int _defense = 0;
+  int _shooting = 0;
+  int _tactics = 0;
+  int _vision = 0;
+  int _charisma = 0;
 
   // Step 3: Social/Optional
   final _clubController = TextEditingController();
@@ -82,7 +87,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     if (currentPoints > maxBudget) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You exceeded the point budget!')),
+        const SnackBar(
+          content: Text('You exceeded the point budget!'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
@@ -94,9 +102,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         age: int.tryParse(_ageController.text) ?? 18,
-        positionPrimary: _positionPrimary,
-        positionSecondary: _positionSecondary,
-        positionTertiary: _positionTertiary,
+
+        positionPrimary: _selectedPositions.isNotEmpty
+            ? _selectedPositions[0]
+            : null,
+        positionSecondary: _selectedPositions.length > 1
+            ? _selectedPositions[1]
+            : null,
+        positionTertiary: _selectedPositions.length > 2
+            ? _selectedPositions[2]
+            : null,
         foot: _foot,
         speed: _speed,
         technique: _technique,
@@ -113,18 +128,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await _profileRepository.createProfile(profile);
 
       if (mounted) {
-        // Navigate to Home via AuthGate refresh or explicit navigation
-        // For AuthGate to pick up changes, we might need to trigger a stream or just pushReplacement
-        // But since AuthGate checks stream, and profile is separate...
-        // We need a way to tell the app "Profile is ready".
-        // For now, let's just push replacement to Home.
         Navigator.of(context).pushReplacementNamed('/');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -134,96 +147,131 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Profile')),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(), // Disable swipe
-        children: [_buildStep1(), _buildStep2(), _buildStep3()],
+      extendBodyBehindAppBar: true, // Allow background to show through app bar
+      appBar: AppBar(
+        title: Text(
+          'CREATE PROFILE',
+          style: AppTextStyles.titleMedium.copyWith(
+            letterSpacing: 1.5,
+            color: AppColors.secondary,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.primary),
+      ),
+      body: Stack(
+        children: [
+          // --- BACKGROUND ---
+          const Positioned.fill(child: StadiumBackground()),
+
+          // --- CONTENT ---
+          SafeArea(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [_buildStep1(), _buildStep2(), _buildStep3()],
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStep1() {
-    const positions = ['GK', 'DEF', 'MID', 'FWD'];
     const feet = ['LEFT', 'RIGHT', 'BOTH'];
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Form(
         key: _formKeyStep1,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Basic Info',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                'BASIC INFO',
+                style: AppTextStyles.displayMedium.copyWith(
+                  color: AppColors.primary,
+                ),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _firstNameController,
-                decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+              const SizedBox(height: 8),
+              Text(
+                'Tell us who you are on the pitch.',
+                style: AppTextStyles.bodyMedium,
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _lastNameController,
-                decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
+              const SizedBox(height: 32),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _firstNameController,
+                      style: AppTextStyles.bodyLarge,
+                      decoration: const InputDecoration(
+                        labelText: 'FIRST NAME',
+                      ),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _lastNameController,
+                      style: AppTextStyles.bodyLarge,
+                      decoration: const InputDecoration(labelText: 'LAST NAME'),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _ageController,
-                decoration: const InputDecoration(labelText: 'Age'),
+                style: AppTextStyles.bodyLarge,
+                decoration: const InputDecoration(labelText: 'AGE'),
                 keyboardType: TextInputType.number,
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _positionPrimary,
-                decoration: const InputDecoration(
-                  labelText: 'Primary Position',
+              // --- POSITION SELECTOR (MINI-PITCH) ---
+              Center(
+                child: PositionSelector(
+                  selectedPositions: _selectedPositions,
+                  onPositionsChanged: (positions) =>
+                      setState(() => _selectedPositions = positions),
                 ),
-                items: positions
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                    .toList(),
-                onChanged: (v) => setState(() => _positionPrimary = v),
-                validator: (v) => v == null ? 'Required' : null,
               ),
+              if (_selectedPositions.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Center(
+                    child: Text(
+                      'Select at least one position',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _positionSecondary,
-                decoration: const InputDecoration(
-                  labelText: 'Secondary Position (Optional)',
-                ),
-                items: positions
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                    .toList(),
-                onChanged: (v) => setState(() => _positionSecondary = v),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _positionTertiary,
-                decoration: const InputDecoration(
-                  labelText: 'Tertiary Position (Optional)',
-                ),
-                items: positions
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                    .toList(),
-                onChanged: (v) => setState(() => _positionTertiary = v),
-              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _foot,
-                decoration: const InputDecoration(labelText: 'Preferred Foot'),
+                style: AppTextStyles.bodyLarge,
+                dropdownColor: AppColors.surface,
+                decoration: const InputDecoration(labelText: 'PREFERRED FOOT'),
                 items: feet
                     .map((f) => DropdownMenuItem(value: f, child: Text(f)))
                     .toList(),
                 onChanged: (v) => setState(() => _foot = v),
                 validator: (v) => v == null ? 'Required' : null,
               ),
-              const SizedBox(height: 24),
-              ElevatedButton(onPressed: _nextPage, child: const Text('Next')),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _nextPage,
+                child: const Text('NEXT STEP'),
+              ),
             ],
           ),
         ),
@@ -232,76 +280,123 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildStep2() {
+    final skills = {
+      'SPD': _speed, // Shortened labels for chart
+      'TEC': _technique,
+      'STM': _stamina,
+      'DEF': _defense,
+      'SHT': _shooting,
+      'TAC': _tactics,
+      'VIS': _vision,
+      'CHA': _charisma,
+    };
+
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Skills Assessment',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
                 Text(
-                  'Points Left: $remainingPoints',
-                  style: TextStyle(
-                    color: remainingPoints < 0 ? Colors.red : Colors.green,
-                    fontWeight: FontWeight.bold,
+                  'SKILLS',
+                  style: AppTextStyles.displayMedium.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: remainingPoints < 0
+                        ? AppColors.error.withValues(alpha: 0.2)
+                        : SkillHexagon.neonTurf.withValues(
+                            alpha: 0.2,
+                          ), // Use Neon
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: remainingPoints < 0
+                          ? AppColors.error
+                          : SkillHexagon.neonTurf, // Use Neon
+                    ),
+                  ),
+                  child: Text(
+                    'PTS: $remainingPoints',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      color: remainingPoints < 0
+                          ? AppColors.error
+                          : SkillHexagon.neonTurf,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text('Rate yourself 1-5. Total max: 30.'),
-            const Divider(),
-            _buildSlider('Speed', _speed, (v) => setState(() => _speed = v)),
+            const SizedBox(height: 20),
+
+            // --- HEXAGON CHART ---
+            Center(child: SkillHexagon(skills: skills, size: 220)),
+            const SizedBox(height: 30),
+
+            Text(
+              'Distribute 30 points (1-5).',
+              style: AppTextStyles.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+
+            _buildSlider('SPEED', _speed, (v) => setState(() => _speed = v)),
             _buildSlider(
-              'Technique',
+              'TECHNIQUE',
               _technique,
               (v) => setState(() => _technique = v),
             ),
             _buildSlider(
-              'Stamina',
+              'STAMINA',
               _stamina,
               (v) => setState(() => _stamina = v),
             ),
             _buildSlider(
-              'Defense',
+              'DEFENSE',
               _defense,
               (v) => setState(() => _defense = v),
             ),
             _buildSlider(
-              'Shooting',
+              'SHOOTING',
               _shooting,
               (v) => setState(() => _shooting = v),
             ),
             _buildSlider(
-              'Tactics',
+              'TACTICS',
               _tactics,
               (v) => setState(() => _tactics = v),
             ),
-            _buildSlider('Vision', _vision, (v) => setState(() => _vision = v)),
+            _buildSlider('VISION', _vision, (v) => setState(() => _vision = v)),
             _buildSlider(
-              'Charisma',
+              'CHARISMA',
               _charisma,
               (v) => setState(() => _charisma = v),
             ),
-            const SizedBox(height: 24),
+
+            const SizedBox(height: 32),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _previousPage,
-                    child: const Text('Back'),
+                    child: const Text('BACK'),
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: remainingPoints >= 0 ? _nextPage : null,
-                    child: const Text('Next'),
+                    // Update button style to match Neon if valid?
+                    // Or keep generic primary. Let's keep generic for now to avoid mess.
+                    child: const Text('NEXT STEP'),
                   ),
                 ),
               ],
@@ -313,62 +408,101 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildSlider(String label, int value, ValueChanged<int> onChanged) {
+    // Neon glow effect logic? Simple color swap for now.
+    final isActive = value > 1;
+    final color = isActive ? SkillHexagon.neonTurf : AppColors.secondary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$label: $value'),
-        Slider(
-          value: value.toDouble(),
-          min: 1,
-          max: 5,
-          divisions: 4,
-          onChanged: (v) => onChanged(v.toInt()),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: AppTextStyles.labelMedium),
+            Text(
+              value.toString(),
+              style: AppTextStyles.titleMedium.copyWith(color: color),
+            ),
+          ],
         ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: color,
+            inactiveTrackColor: AppColors.surface,
+            thumbColor: color,
+            overlayColor: color.withValues(alpha: 0.2),
+            trackHeight: 2.0, // Thinner lines as per "Neon Sliders (lines)"
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+          ),
+          child: Slider(
+            value: value.toDouble(),
+            min: 0,
+            max: 5,
+            divisions: 5,
+            onChanged: (v) {
+              final newValue = v.toInt();
+              if (newValue > value && remainingPoints <= 0) return;
+              onChanged(newValue);
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }
 
   Widget _buildStep3() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Social & Extras',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              'EXTRAS',
+              style: AppTextStyles.displayMedium.copyWith(
+                color: AppColors.primary,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            Text('Show your colors.', style: AppTextStyles.bodyMedium),
+            const SizedBox(height: 32),
             TextFormField(
               controller: _clubController,
+              style: AppTextStyles.bodyLarge,
               decoration: const InputDecoration(
-                labelText: 'Favorite Club (Optional)',
+                labelText: 'FAVORITE CLUB (OPTIONAL)',
+                prefixIcon: Icon(Icons.shield_outlined),
               ),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _playerController,
+              style: AppTextStyles.bodyLarge,
               decoration: const InputDecoration(
-                labelText: 'Favorite Player (Optional)',
+                labelText: 'FAVORITE PLAYER (OPTIONAL)',
+                prefixIcon: Icon(Icons.star_outline),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 48),
+
             _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 : Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           onPressed: _previousPage,
-                          child: const Text('Back'),
+                          child: const Text('BACK'),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton(
                           onPressed: _submitProfile,
-                          child: const Text('Finish'),
+                          child: const Text('FINISH'),
                         ),
                       ),
                     ],
