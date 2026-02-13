@@ -56,10 +56,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
@@ -71,9 +69,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _upcomingMatches != null && _upcomingMatches!.length > 1
         ? _upcomingMatches!.sublist(1)
         : <MatchModel>[];
-
-    // If no matches at all, use empty list for "other matches" to pass down.
-    // We will handle empty states inside the widgets or here.
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -109,9 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.all(16.0),
               child: NextMatchCard(match: nextMatch),
             ),
-
             const SizedBox(height: 16),
-
             // GROUPS CAROUSEL
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -125,9 +118,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 12),
             GroupsCarousel(groups: _myGroups ?? [], onRefresh: _loadData),
-
             const SizedBox(height: 24),
-
             // UPCOMING MATCHES LIST
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
