@@ -4,7 +4,7 @@ import '../../onboarding/data/models/profile_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
-import '../../home/presentation/dashboard_screen.dart';
+import '../../home/presentation/main_screen.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -34,7 +34,7 @@ class AuthGate extends StatelessWidget {
 
               if (profileSnapshot.hasData && profileSnapshot.data != null) {
                 // User has a profile, go to Dashboard
-                return const DashboardScreen();
+                return const MainScreen();
               } else {
                 // User logged in but no profile, go to Onboarding
                 return const OnboardingScreen();
