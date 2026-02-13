@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../../core/app_theme.dart';
 import '../../data/models/match_player_model.dart';
 
-class PlayerListCard extends StatelessWidget {
+class PlayerListCard extends StatefulWidget {
   final List<MatchPlayerModel> players;
   final String currentUserId;
   final Function(bool) onToggleCar;
   final Function(int) onUpdateSeats;
-
   final int maxPlayers;
 
   const PlayerListCard({
@@ -20,35 +19,51 @@ class PlayerListCard extends StatelessWidget {
   });
 
   @override
+  State<PlayerListCard> createState() => _PlayerListCardState();
+}
+
+class _PlayerListCardState extends State<PlayerListCard>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Sort players: Current user first, then by name
-    final sortedPlayers = List<MatchPlayerModel>.from(players);
-    sortedPlayers.sort((a, b) {
-      if (a.profileId == currentUserId) return -1;
-      if (b.profileId == currentUserId) return 1;
-      return (a.profile?.firstName ?? '').compareTo(b.profile?.firstName ?? '');
-    });
+    // 1. Filter players based on tab
+    // We'll use AnimatedBuilder or just setState from TabBar listener?
+    // TabBarView is better for "carousel" feel.
 
     return Card(
       color: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Column(
+        children: [
+          // Header with Tabs
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'SQUAD LIST',
+                  'ROSTERS',
                   style: AppTextStyles.labelSmall.copyWith(
                     color: AppColors.textSecondary,
                     letterSpacing: 1.5,
                   ),
                 ),
                 Text(
-                  '${players.length}/${maxPlayers > 0 ? maxPlayers : "?"} Players',
+                  '${widget.players.length}/${widget.maxPlayers > 0 ? widget.maxPlayers : "?"} Players',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.bold,
@@ -56,22 +71,106 @@ class PlayerListCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: sortedPlayers.length,
-              separatorBuilder: (_, __) => const Divider(color: Colors.white10),
-              itemBuilder: (context, index) {
-                final player = sortedPlayers[index];
-                final isMe = player.profileId == currentUserId;
+          ),
 
-                return _buildPlayerTile(context, player, isMe);
-              },
+          // Custom Tab Bar
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(20),
             ),
-          ],
-        ),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.primary.withOpacity(0.5)),
+              ),
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondary,
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              tabs: const [
+                Tab(text: 'ALL'),
+                Tab(text: 'TEAM A'),
+                Tab(text: 'TEAM B'),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Tab Views
+          SizedBox(
+            height: 400, // Fixed height or expandable?
+            // ListView inside Column needs height or shrinkWrap.
+            // TabBarView needs height.
+            // Let's use constraints or Calculate based on content?
+            // "Carousel" implies swiping. TabBarView provides that.
+            // But height issue is tricky.
+            // Let's use AnimatedSize or just a fixed constraint for now, or IntrinsicHeight (expensive).
+            // Actually, we can use a container with a reasonable min-height or adapt.
+            // Let's try shrinkWrap in ListView inside TabBarView but TabBarView needs expanded/height.
+            // Given it's a Card in a ScrollView (MatchDetailsScreen), we probably want it to size to content.
+            // But TabBarView forces viewport.
+            // ALTERNATIVE: Don't use TabBarView if we want auto-height. Use Filter + AnimatedSwitcher.
+            // BUT User asked for "Carousel (slider)". TabBarView gives swipe.
+            // Let's pick a fixed height for now or use a custom "Swipeable" container.
+            // Safest for scrolling parent: AnimatedSwitcher with buttons if logic is simple.
+            // But TabController is nice.
+            // Let's stick to TabBarView with a fix: ConstrainedBox.
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildPlayerList(widget.players),
+                _buildPlayerList(
+                  widget.players.where((p) => p.team == Team.A).toList(),
+                ),
+                _buildPlayerList(
+                  widget.players.where((p) => p.team == Team.B).toList(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
+    );
+  }
+
+  Widget _buildPlayerList(List<MatchPlayerModel> filteredPlayers) {
+    // Sort: Me first, then Name
+    final sorted = List<MatchPlayerModel>.from(filteredPlayers);
+    sorted.sort((a, b) {
+      if (a.profileId == widget.currentUserId) return -1;
+      if (b.profileId == widget.currentUserId) return 1;
+      return (a.profile?.firstName ?? '').compareTo(b.profile?.firstName ?? '');
+    });
+
+    if (sorted.isEmpty) {
+      return Center(
+        child: Text(
+          'No players yet',
+          style: AppTextStyles.bodyMedium.copyWith(color: Colors.white30),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: sorted.length,
+      separatorBuilder: (_, __) => const Divider(color: Colors.white10),
+      itemBuilder: (context, index) {
+        final player = sorted[index];
+        final isMe = player.profileId == widget.currentUserId;
+        return _buildPlayerTile(context, player, isMe);
+      },
     );
   }
 
@@ -118,14 +217,48 @@ class PlayerListCard extends StatelessWidget {
                         fontWeight: isMe ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
-                    if (player.profile?.positionPrimary != null)
-                      Text(
-                        player.profile!.positionPrimary!.toUpperCase(),
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: Colors.white54,
-                          fontSize: 10,
-                        ),
-                      ),
+                    Row(
+                      children: [
+                        if (player.team != null)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: player.team == Team.A
+                                  ? Colors.redAccent.withOpacity(0.2)
+                                  : Colors.blueAccent.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: player.team == Team.A
+                                    ? Colors.redAccent
+                                    : Colors.blueAccent,
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Text(
+                              player.team == Team.A ? 'TEAM A' : 'TEAM B',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: player.team == Team.A
+                                    ? Colors.redAccent
+                                    : Colors.blueAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        if (player.profile?.positionPrimary != null)
+                          Text(
+                            player.profile!.positionPrimary!.toUpperCase(),
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: Colors.white54,
+                              fontSize: 10,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -188,7 +321,7 @@ class PlayerListCard extends StatelessWidget {
                   const Spacer(),
                   Switch(
                     value: player.hasCar,
-                    onChanged: onToggleCar,
+                    onChanged: widget.onToggleCar,
                     activeColor: AppColors.secondary,
                     activeTrackColor: AppColors.secondary.withOpacity(0.3),
                   ),
@@ -207,7 +340,7 @@ class PlayerListCard extends StatelessWidget {
                       Icons.remove_circle_outline,
                       color: Colors.white54,
                     ),
-                    onPressed: () => onUpdateSeats(
+                    onPressed: () => widget.onUpdateSeats(
                       (player.carSeats > 0) ? player.carSeats - 1 : 0,
                     ),
                     constraints: const BoxConstraints(),
@@ -227,7 +360,7 @@ class PlayerListCard extends StatelessWidget {
                       Icons.add_circle_outline,
                       color: Colors.white54,
                     ),
-                    onPressed: () => onUpdateSeats(player.carSeats + 1),
+                    onPressed: () => widget.onUpdateSeats(player.carSeats + 1),
                     constraints: const BoxConstraints(),
                     padding: EdgeInsets.zero,
                   ),
