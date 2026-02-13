@@ -4,6 +4,7 @@ import 'core/app_constants.dart';
 import 'features/splash/presentation/splash_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/registration_screen.dart';
+import 'features/home/presentation/dashboard_screen.dart';
 
 import 'package:footstars/core/app_theme.dart';
 
@@ -32,6 +33,8 @@ class FootStarApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegistrationScreen(),
+        '/dashboard': (context) =>
+            const DashboardScreen(), // Add named route if needed, or just pushReplacement
       },
       debugShowCheckedModeBanner: false,
     );

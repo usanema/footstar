@@ -57,6 +57,20 @@ class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
+  static TextStyle get headlineMedium => GoogleFonts.poppins(
+    fontSize: 28,
+    fontWeight: FontWeight.bold,
+    color: AppColors.textPrimary,
+    height: 1.2,
+  );
+
+  static TextStyle get headlineSmall => GoogleFonts.poppins(
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+    color: AppColors.textPrimary,
+    height: 1.2,
+  );
+
   // Body - Montserrat
   static TextStyle get bodyLarge => GoogleFonts.montserrat(
     fontSize: 16,

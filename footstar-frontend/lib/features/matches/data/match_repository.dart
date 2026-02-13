@@ -109,4 +109,24 @@ class MatchRepository {
         .update({'team': team.name})
         .eq('id', matchPlayerId);
   }
+
+  Future<List<MatchModel>> getMyUpcomingMatches() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return [];
+
+    final response = await _supabase
+        .from('match_players')
+        .select('matches!inner(*, groups(name))')
+        .eq('profile_id', user.id)
+        .gte('matches.date', DateTime.now().toIso8601String());
+    // .order('matches(date)', ascending: true); // Complex ordering, sorting in Dart for now
+
+    final matches = (response as List).map((e) {
+      return MatchModel.fromMap(e['matches']);
+    }).toList();
+
+    matches.sort((a, b) => a.date.compareTo(b.date));
+
+    return matches;
+  }
 }

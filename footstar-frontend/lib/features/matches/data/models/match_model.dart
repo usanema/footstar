@@ -1,6 +1,7 @@
 class MatchModel {
   final String id;
   final String groupId;
+  final String? groupName; // Added for UI display
   final DateTime date;
   final String location;
   final int maxPlayers;
@@ -12,6 +13,7 @@ class MatchModel {
   MatchModel({
     required this.id,
     required this.groupId,
+    this.groupName,
     required this.date,
     required this.location,
     required this.maxPlayers,
@@ -25,6 +27,7 @@ class MatchModel {
     return MatchModel(
       id: map['id'],
       groupId: map['group_id'],
+      groupName: map['groups'] != null ? map['groups']['name'] : null,
       date: DateTime.parse(map['date']).toLocal(),
       location: map['location'],
       maxPlayers: map['max_players'],
