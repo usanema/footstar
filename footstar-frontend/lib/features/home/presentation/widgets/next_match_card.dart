@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:footstars/core/app_theme.dart';
-import 'package:footstars/features/matches/data/models/match_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/app_theme.dart';
+import '../../../../features/matches/data/models/match_model.dart';
 import 'package:intl/intl.dart';
 import '../../../matches/presentation/match_details_screen.dart';
 
@@ -17,11 +18,13 @@ class NextMatchCard extends StatefulWidget {
 class _NextMatchCardState extends State<NextMatchCard> {
   late Timer _timer;
   Duration _timeLeft = Duration.zero;
+  int _playerCount = 0; // Added this variable
 
   @override
   void initState() {
     super.initState();
     _updateTimeLeft();
+    _fetchPlayerCount(); // Added this call
     _timer = Timer.periodic(
       const Duration(minutes: 1),
       (_) => _updateTimeLeft(),
@@ -42,11 +45,31 @@ class _NextMatchCardState extends State<NextMatchCard> {
     }
   }
 
+  Future<void> _fetchPlayerCount() async {
+    if (widget.match == null) return;
+    try {
+      final count = await Supabase.instance.client
+          .from('match_players')
+          .count(CountOption.exact)
+          .eq('match_id', widget.match!.id)
+          .eq('status', 'IN');
+
+      if (mounted) {
+        setState(() {
+          _playerCount = count;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching player count: $e');
+    }
+  }
+
   @override
   void didUpdateWidget(covariant NextMatchCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.match != oldWidget.match) {
       _updateTimeLeft();
+      _fetchPlayerCount(); // Added this call
     }
   }
 
@@ -140,10 +163,41 @@ class _NextMatchCardState extends State<NextMatchCard> {
                 color: AppColors.textSecondary,
               ),
               const SizedBox(width: 4),
-              Text(
-                widget.match!.location,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
+              Expanded(
+                // Wrapped in Expanded
+                child: Text(
+                  widget.match!.location,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1, // Added
+                  overflow: TextOverflow.ellipsis, // Added
+                ),
+              ),
+              // ADDED: Player Count
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.people,
+                      size: 12,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_playerCount/${widget.match!.maxPlayers}',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

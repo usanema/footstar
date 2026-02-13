@@ -8,12 +8,15 @@ class PlayerListCard extends StatelessWidget {
   final Function(bool) onToggleCar;
   final Function(int) onUpdateSeats;
 
+  final int maxPlayers;
+
   const PlayerListCard({
     super.key,
     required this.players,
     required this.currentUserId,
     required this.onToggleCar,
     required this.onUpdateSeats,
+    this.maxPlayers = 0,
   });
 
   @override
@@ -45,7 +48,7 @@ class PlayerListCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${players.length} Players',
+                  '${players.length}/${maxPlayers > 0 ? maxPlayers : "?"} Players',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.bold,

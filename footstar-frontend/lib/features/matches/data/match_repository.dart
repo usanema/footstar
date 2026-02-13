@@ -103,6 +103,10 @@ class MatchRepository {
         .eq('id', matchPlayerId);
   }
 
+  Future<void> clearPlayerPosition(String matchPlayerId) async {
+    await updatePlayerPosition(matchPlayerId: matchPlayerId, x: null, y: null);
+  }
+
   Future<void> updatePlayerTeam(String matchPlayerId, Team team) async {
     await _supabase
         .from('match_players')

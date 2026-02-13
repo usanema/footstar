@@ -28,423 +28,308 @@ class TacticalBoardWidget extends StatefulWidget {
 }
 
 class _TacticalBoardWidgetState extends State<TacticalBoardWidget> {
+  final GlobalKey _pitchKey = GlobalKey();
+
   @override
   Widget build(BuildContext context) {
+    // If embedded, we might want a header or container
     if (widget.isFullScreen) {
-      return _buildFullScreenPitch(context);
+      return Scaffold(
+        backgroundColor: const Color(0xFF0B0C10),
+        appBar: AppBar(
+          title: const Text(
+            'TACTICAL BOARD',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.transparent,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+          child: AspectRatio(
+            aspectRatio: 2 / 3, // Vertical viewing for full screen
+            child: _buildPitch(context),
+          ),
+        ),
+      );
     }
-    return _buildEmbeddedView(context);
-  }
-
-  // ---------------------------------------------------------------------------
-  // 1. Embedded View: Team Lists (Cards)
-  // ---------------------------------------------------------------------------
-  Widget _buildEmbeddedView(BuildContext context) {
-    final teamA = widget.players.where((p) => p.team == Team.A).toList();
-    final teamB = widget.players.where((p) => p.team == Team.B).toList();
-
-    int strengthA = _calculateTeamStrength(teamA);
-    int strengthB = _calculateTeamStrength(teamB);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'SQUAD TACTICS',
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: AppColors.textSecondary,
-                  letterSpacing: 1.5,
+        if (widget.onExpand != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'TACTICAL BOARD',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.textSecondary,
+                    letterSpacing: 1.5,
+                  ),
                 ),
-              ),
-              if (widget.onExpand != null)
                 IconButton(
                   icon: const Icon(Icons.fullscreen, color: AppColors.accent),
                   onPressed: widget.onExpand,
-                  tooltip: 'Open Tactical Pitch',
                 ),
-            ],
+              ],
+            ),
           ),
-        ),
-
-        // Team Lists
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Team A Card
-              Expanded(
-                child: _buildTeamCard(
-                  team: Team.A,
-                  players: teamA,
-                  strength: strengthA,
-                  color: Colors.redAccent.withOpacity(0.8),
+        AspectRatio(
+          aspectRatio: 3 / 2, // Horizontal for embedded view
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-              ),
-              const SizedBox(width: 12),
-              // Team B Card
-              Expanded(
-                child: _buildTeamCard(
-                  team: Team.B,
-                  players: teamB,
-                  strength: strengthB,
-                  color: Colors.blueAccent.withOpacity(0.8),
-                ),
-              ),
-            ],
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: _buildPitch(context),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTeamCard({
-    required Team team,
-    required List<MatchPlayerModel> players,
-    required int strength,
-    required Color color,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F2833), // Carbon Grey
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                team == Team.A ? "TEAM A" : "TEAM B",
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  "$strength",
-                  style: const TextStyle(
-                    color: AppColors.accent, // Golden/Neon
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Divider(color: Colors.white10),
-          // Player List
-          if (players.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Text(
-                "- Empty -",
-                style: TextStyle(color: Colors.white30, fontSize: 12),
-              ),
-            )
-          else
-            ...players.map(
-              (p) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 10,
-                      backgroundColor: color.withOpacity(0.2),
-                      backgroundImage: p.profile?.avatarUrl != null
-                          ? NetworkImage(p.profile!.avatarUrl!)
-                          : null,
-                      child: p.profile?.avatarUrl == null
-                          ? Text(
-                              p.profile?.firstName?[0] ?? '?',
-                              style: TextStyle(color: color, fontSize: 10),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        p.profile?.firstName ?? 'Unknown',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+  Widget _buildPitch(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          key: _pitchKey,
+          children: [
+            // 1. Pitch Painting
+            Positioned.fill(
+              child: CustomPaint(painter: TacticalPitchPainter()),
+            ),
+
+            // 2. Drag Target
+            Positioned.fill(
+              child: DragTarget<MatchPlayerModel>(
+                onWillAcceptWithDetails: (_) => true,
+                onAcceptWithDetails: (details) => _handleDrop(details),
+                builder: (context, candidateData, rejectedData) {
+                  return Container(color: Colors.transparent);
+                },
               ),
             ),
-        ],
-      ),
-    );
-  }
 
-  // ---------------------------------------------------------------------------
-  // 2. Full Screen Pitch View
-  // ---------------------------------------------------------------------------
-  Widget _buildFullScreenPitch(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B0C10), // Pitch Black
-      appBar: AppBar(
-        title: const Text(
-          'TACTICAL BOARD',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return Center(child: _buildInteractivePitch(constraints));
-        },
-      ),
-    );
-  }
-
-  Widget _buildInteractivePitch(BoxConstraints constraints) {
-    // Aspect Ratio 3:2 for Horizontal Pitch
-    double aspectRatio = 3 / 2;
-    double width = constraints.maxWidth;
-    double height = width / aspectRatio;
-
-    if (height > constraints.maxHeight) {
-      height = constraints.maxHeight;
-      width = height * aspectRatio;
-    }
-
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Stack(
-        children: [
-          // 1. The Pitch (Background)
-          _buildPitchBackground(),
-
-          // 2. Drag Target (Touch Handling)
-          Positioned.fill(
-            child: Builder(
-              builder: (pitchContext) {
-                return DragTarget<MatchPlayerModel>(
-                  onWillAcceptWithDetails: (details) {
-                    return true; // Draggable prevents unauthorized drags, so we can accept all valid data types
-                  },
-                  onAcceptWithDetails: (details) {
-                    _handleDrop(pitchContext, details, width, height);
-                  },
-                  builder: (ctx, _, __) =>
-                      Container(color: Colors.white.withOpacity(0.01)),
-                );
-              },
-            ),
-          ),
-
-          // 3. Players (Draggable Tokens)
-          ...widget.players.map((p) => _buildPlayerToken(p, width, height)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPitchBackground() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFF1B5E20).withOpacity(0.8),
-            const Color(0xFF0D3312).withOpacity(0.9),
+            // 3. Players
+            ...widget.players.map((p) => _buildPlayerToken(p, constraints)),
           ],
-        ),
-        border: Border.all(color: Colors.white24, width: 4),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Stack(
-        children: [
-          // Center Line
-          Center(
-            child: Container(
-              width: 2,
-              height: double.infinity,
-              color: Colors.white24,
-            ),
-          ),
-          // Center Circle
-          Center(
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white24, width: 2),
-              ),
-            ),
-          ),
-          // Team Labels (Overlay)
-          Positioned(
-            top: 20,
-            left: 20,
-            child: Text(
-              "TEAM A",
-              style: TextStyle(
-                color: Colors.redAccent.withOpacity(0.5),
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
-            ),
-          ),
-          Positioned(
-            top: 20,
-            right: 20,
-            child: Text(
-              "TEAM B",
-              style: TextStyle(
-                color: Colors.blueAccent.withOpacity(0.5),
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildPlayerToken(
     MatchPlayerModel player,
-    double pitchW,
-    double pitchH,
+    BoxConstraints constraints,
   ) {
-    // Default coords if null
-    double x = player.pitchX ?? 0.5;
-    double y = player.pitchY ?? 0.5;
+    // If no position, don't show on pitch (should be on bench)
+    if (player.pitchX == null || player.pitchY == null)
+      return const SizedBox.shrink();
 
-    // Fix if unassigned
-    if (player.pitchX == null) {
-      if (player.team == Team.A) x = 0.25;
-      if (player.team == Team.B) x = 0.75;
-    }
+    final x = player.pitchX! * constraints.maxWidth;
+    final y = player.pitchY! * constraints.maxHeight;
+    const size = 32.0;
 
-    bool canMove = widget.isAdmin || (player.profileId == widget.currentUserId);
+    final canMove =
+        widget.isAdmin || (player.profileId == widget.currentUserId);
 
-    Widget token = _buildTokenVisual(player);
+    final token = _PlayerToken(player: player, size: size);
 
     return Positioned(
-      left: x * pitchW - 20, // Center radius 20
-      top: y * pitchH - 20,
+      left: x - (size / 2),
+      top: y - (size / 2),
       child: canMove
           ? Draggable<MatchPlayerModel>(
               data: player,
               feedback: Transform.scale(scale: 1.2, child: token),
-              childWhenDragging: Opacity(opacity: 0.5, child: token),
+              childWhenDragging: Opacity(opacity: 0.3, child: token),
               child: token,
             )
           : token,
     );
   }
 
-  Widget _buildTokenVisual(MatchPlayerModel player) {
-    Color ringColor = Colors.white;
-    if (player.team == Team.A) ringColor = Colors.redAccent;
-    if (player.team == Team.B) ringColor = Colors.blueAccent;
+  void _handleDrop(DragTargetDetails<MatchPlayerModel> details) {
+    final RenderBox? box =
+        _pitchKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(2), // Ring width
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: ringColor,
-            boxShadow: [
-              BoxShadow(color: ringColor.withOpacity(0.5), blurRadius: 8),
-            ],
-          ),
-          child: CircleAvatar(
-            radius: 18,
-            backgroundColor: const Color(0xFF1F2833),
-            backgroundImage: player.profile?.avatarUrl != null
-                ? NetworkImage(player.profile!.avatarUrl!)
-                : null,
-            child: player.profile?.avatarUrl == null
-                ? Text(
-                    player.profile?.firstName?[0] ?? '?',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  )
-                : null,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.black87,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            player.profile?.firstName ?? "Uni",
-            style: const TextStyle(color: Colors.white, fontSize: 10),
-            overflow: TextOverflow.visible,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // 3. Logic: Strength & Drop Handling
-  // ---------------------------------------------------------------------------
-  int _calculateTeamStrength(List<MatchPlayerModel> teamPlayers) {
-    return teamPlayers.fold(0, (sum, p) => sum + (p.profile?.totalPoints ?? 0));
-  }
-
-  void _handleDrop(
-    BuildContext context,
-    DragTargetDetails<MatchPlayerModel> details,
-    double w,
-    double h,
-  ) {
-    final RenderBox box = context.findRenderObject() as RenderBox;
     final localPos = box.globalToLocal(details.offset);
+    final w = box.size.width;
+    final h = box.size.height;
 
     double newX = localPos.dx / w;
     double newY = localPos.dy / h;
 
-    // Clamp to pitch
+    // Clamp
     newX = newX.clamp(0.05, 0.95);
     newY = newY.clamp(0.05, 0.95);
 
-    // Update XY
     if (widget.onPlayerMovedPitch != null) {
       widget.onPlayerMovedPitch!(details.data, newX, newY);
     }
 
-    // Determine Team based on side (Left < 0.5 > Right)
-    Team newTeam = newX < 0.5 ? Team.A : Team.B;
-    if (details.data.team != newTeam) {
-      widget.onPlayerMovedTeam(details.data, newTeam);
+    // Auto-detect team based on side (optional, logic depends on horizontal vs vertical)
+    // If embedded (horizontal), Left = A, Right = B.
+    // If full screen (vertical), Top = A, Bottom = B?
+    // Let's assume Pitch Logic dictates side.
+    // For now, Pitch Painting logic:
+    // Vertical: Top / Bottom
+    // Horizontal: Left / Right
+    // Let's leave team assignment manual or based on zones if required later.
+    // The current auto-balance assigns teams. Dragging just updates position.
+    // If we want to change team by dragging across centerline, we can add that logic.
+    // Keeping it simple: Position update only.
+  }
+}
+
+class _PlayerToken extends StatelessWidget {
+  final MatchPlayerModel player;
+  final double size;
+
+  const _PlayerToken({required this.player, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    Color ringColor = Colors.white;
+    if (player.team == Team.A) ringColor = Colors.redAccent;
+    if (player.team == Team.B) ringColor = Colors.blueAccent;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1F2833),
+        shape: BoxShape.circle,
+        border: Border.all(color: ringColor, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        player.profile?.firstName?.substring(0, 1).toUpperCase() ?? '?',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: size * 0.4,
+        ),
+      ),
+    );
+  }
+}
+
+class TacticalPitchPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    final grassPaint = Paint()
+      ..color = const Color(0xFF1B5E20)
+      ..style = PaintingStyle.fill;
+
+    // 1. Grass
+    canvas.drawRect(Offset.zero & size, grassPaint);
+    _drawGrassStrips(canvas, size);
+
+    // 2. Lines
+    final w = size.width;
+    final h = size.height;
+    final center = Offset(w / 2, h / 2);
+
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), paint); // Outer
+
+    // Determine orientation based on aspect ratio
+    bool isVertical = h > w;
+
+    if (isVertical) {
+      // Vertical Pitch
+      canvas.drawLine(Offset(0, h / 2), Offset(w, h / 2), paint); // Center Line
+
+      // Goals / Penalties
+      final penaltyW = w * 0.6;
+      final penaltyH = h * 0.15;
+
+      canvas.drawRect(
+        Rect.fromLTWH((w - penaltyW) / 2, 0, penaltyW, penaltyH),
+        paint,
+      ); // Top
+      canvas.drawRect(
+        Rect.fromLTWH((w - penaltyW) / 2, h - penaltyH, penaltyW, penaltyH),
+        paint,
+      ); // Bottom
+    } else {
+      // Horizontal Pitch
+      canvas.drawLine(Offset(w / 2, 0), Offset(w / 2, h), paint); // Center Line
+
+      final penaltyH = h * 0.6;
+      final penaltyW = w * 0.15;
+
+      canvas.drawRect(
+        Rect.fromLTWH(0, (h - penaltyH) / 2, penaltyW, penaltyH),
+        paint,
+      ); // Left
+      canvas.drawRect(
+        Rect.fromLTWH(w - penaltyW, (h - penaltyH) / 2, penaltyW, penaltyH),
+        paint,
+      ); // Right
+    }
+
+    // Center Circle
+    canvas.drawCircle(center, (isVertical ? w : h) * 0.15, paint);
+    canvas.drawCircle(center, 3, paint..style = PaintingStyle.fill);
+  }
+
+  void _drawGrassStrips(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black.withOpacity(0.05)
+      ..style = PaintingStyle.fill;
+
+    // Draw strips based on orientation?
+    // Traditionally strips are perpendicular to touchline.
+    // Let's just draw generic grid or strips.
+
+    bool isVertical = size.height > size.width;
+    int strips = 10;
+
+    if (isVertical) {
+      final stripHeight = size.height / strips;
+      for (int i = 0; i < strips; i += 2) {
+        canvas.drawRect(
+          Rect.fromLTWH(0, i * stripHeight, size.width, stripHeight),
+          paint,
+        );
+      }
+    } else {
+      final stripWidth = size.width / strips;
+      for (int i = 0; i < strips; i += 2) {
+        canvas.drawRect(
+          Rect.fromLTWH(i * stripWidth, 0, stripWidth, size.height),
+          paint,
+        );
+      }
     }
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

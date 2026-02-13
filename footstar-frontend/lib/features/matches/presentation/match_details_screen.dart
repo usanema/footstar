@@ -4,8 +4,9 @@ import '../data/match_repository.dart';
 import '../data/models/match_model.dart';
 import '../data/models/match_player_model.dart';
 import '../domain/services/team_balancer_service.dart';
-import '../domain/services/pitch_positioning_service.dart'; // Added
+import '../domain/services/pitch_positioning_service.dart';
 import 'widgets/tactical_board_widget.dart';
+import 'widgets/bench_widget.dart'; // Added
 
 import 'package:footstars/core/app_theme.dart';
 import 'widgets/match_hero_section.dart';
@@ -14,12 +15,12 @@ import 'widgets/player_list_card.dart';
 
 class MatchDetailsScreen extends StatefulWidget {
   final MatchModel match;
-  final bool isAdmin; // Added
+  final bool isAdmin;
 
   const MatchDetailsScreen({
     super.key,
     required this.match,
-    this.isAdmin = false, // Default false
+    this.isAdmin = false,
   });
 
   @override
@@ -30,7 +31,7 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   final MatchRepository _repository = MatchRepository();
   String? _currentUserId;
 
-  List<MatchPlayerModel> _players = []; // Changed from nullable
+  List<MatchPlayerModel> _players = [];
   bool _isLoading = true;
   final TeamBalancerService _balancer = TeamBalancerService();
   final PitchPositioningService _positioner = PitchPositioningService();
@@ -85,14 +86,13 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
       if (mounted) {
         setState(() {
           _players = players;
-          // _currentUserPlayer logic removed, now derived in build
         });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading match details: $e')),
-        ); // Updated message
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -135,15 +135,13 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
 
     if (mounted) {
       setState(() {
-        _players = players.map(
-          (p) {
-            final positionedPlayer = positioned.firstWhere(
-              (bp) => bp.id == p.id,
-              orElse: () => p,
-            );
-            return positionedPlayer;
-          },
-        ).toList(); // Fixed: Added .toList() and cast if needed, but map returns Iterable<MatchPlayerModel> effectively if all returns are such.
+        _players = players.map((p) {
+          final positionedPlayer = positioned.firstWhere(
+            (bp) => bp.id == p.id,
+            orElse: () => p,
+          );
+          return positionedPlayer;
+        }).toList();
       });
     }
 
@@ -231,13 +229,20 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
       );
     }
 
-    // Determine current user status from list (more reliable than local state sometimes)
     final currentUserPlayer = _currentUserPlayer;
     final currentStatus = currentUserPlayer?.status ?? PlayerStatus.UNKNOWN;
 
     // Filter players for display
     final inPlayers = _players
         .where((p) => p.status == PlayerStatus.IN)
+        .toList();
+
+    final placedPlayers = inPlayers
+        .where((p) => p.pitchX != null && p.pitchY != null)
+        .toList();
+
+    final unplacedPlayers = inPlayers
+        .where((p) => p.pitchX == null || p.pitchY == null)
         .toList();
 
     return Scaffold(
@@ -262,14 +267,16 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 100), // Top spacing for AppBar
-              // 1. Hero Section ("Stadium Pass")
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: MatchHeroSection(match: widget.match),
+                child: MatchHeroSection(
+                  match: widget.match,
+                  userStatus: currentStatus,
+                  onCheckIn: () => _updateStatus(PlayerStatus.IN),
+                ),
               ),
               const SizedBox(height: 24),
 
-              // 2. Attendance Controls ("Locker Room")
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: StatusSelector(
@@ -280,8 +287,11 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 3. Player List & Carpooling ("The Squad")
-              // Only show if user is part of the match context (even if OUT or RESERVE)
+              // 3. Player List (The Squad) - Optional, maybe remove if redundant with Bench?
+              // The plan says "Embed Team Lists (Home/Away)" -> maybe Bench covers "unplaced".
+              // But what about "placed" players list?
+              // Existing 'PlayerListCard' shows everyone IN.
+              // Let's keep it for now as a "Roster".
               if (_currentUserId != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -290,58 +300,50 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                     currentUserId: _currentUserId!,
                     onToggleCar: (val) => _toggleCar(val),
                     onUpdateSeats: (seats) => _updateSeats(seats),
+                    maxPlayers: widget.match.maxPlayers,
                   ),
                 ),
               if (_currentUserId != null) const SizedBox(height: 24),
 
-              // 4. Team Composition ("Tactical Board")
-              // Only show if there are players IN
-              if (inPlayers.isNotEmpty)
+              // 4. Tactical Board (Pitch)
+              if (placedPlayers.isNotEmpty || unplacedPlayers.isNotEmpty) ...[
                 TacticalBoardWidget(
-                  players: inPlayers,
+                  players: placedPlayers,
                   isAdmin: _isAdmin,
-                  currentUserId: _currentUserId, // Passed here
+                  currentUserId: _currentUserId,
                   onPlayerMovedTeam: _onPlayerMoved,
                   onPlayerMovedPitch: _updatePosition,
                   onExpand: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => Scaffold(
-                          backgroundColor: Colors.black,
-                          body: SafeArea(
-                            child: Stack(
-                              children: [
-                                TacticalBoardWidget(
-                                  players: _players
-                                      .where((p) => p.status == PlayerStatus.IN)
-                                      .toList(),
-                                  isAdmin: _isAdmin,
-                                  currentUserId: _currentUserId, // Passed here
-                                  isFullScreen: true,
-                                  onPlayerMovedTeam: _onPlayerMoved,
-                                  onPlayerMovedPitch: _updatePosition,
-                                ),
-                                Positioned(
-                                  top: 10,
-                                  right: 10,
-                                  child: IconButton(
-                                    icon: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                    ),
-                                    onPressed: () => Navigator.pop(context),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        builder: (_) => TacticalBoardWidget(
+                          players: placedPlayers,
+                          isAdmin: _isAdmin,
+                          currentUserId: _currentUserId, // Passed here
+                          isFullScreen: true,
+                          onPlayerMovedTeam: _onPlayerMoved,
+                          onPlayerMovedPitch: _updatePosition,
                         ),
                       ),
                     ).then((_) => _fetchMatchDetails());
                   },
                 ),
-              const SizedBox(height: 100), // Bottom spacing
+
+                const SizedBox(height: 16),
+
+                // 5. Bench (Unplaced)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: BenchWidget(
+                    players: unplacedPlayers,
+                    isAdmin: _isAdmin,
+                    currentUserId: _currentUserId,
+                    onPlayerDropped: _clearPosition,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 100),
             ],
           ),
         ),
@@ -377,6 +379,53 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
     }
   }
 
-  // Helper methods like _buildHeader, _buildAttendanceControls etc. are removed
-  // as they are replaced by standalone widgets.
+  Future<void> _clearPosition(MatchPlayerModel player) async {
+    setState(() {
+      final index = _players.indexWhere((p) => p.id == player.id);
+      if (index != -1) {
+        // Create a copy with null pitchX/Y.
+        // Note: copyWith arguments are nullable, but if I pass null, does it set to null or keep existing?
+        // Usually copyWith(val: val ?? this.val) checks for null.
+        // If I want to FORCE null, I might need to change MatchPlayerModel copyWith logic or use a specific method.
+        // Let's check MatchPlayerModel copyWith.
+        // It does: pitchX: pitchX ?? this.pitchX.
+        // So passing null will NOT clear it.
+        // I need to modify MatchPlayerModel or use a workaround.
+        // For now, I'll assumre I can't easily clear it with copyWith unless I change it.
+        // Workaround: Use a sentinel value if needed, OR modify MatchPlayerModel.
+        // Best approach: Modofy MatchPlayerModel to allow clearing.
+        // Or direct assignment if mutable (it's final).
+        // I will modify MatchPlayerModel to accept a flag or nullable wrapper.
+        // OR better: Create a new instance manually.
+        _players[index] = MatchPlayerModel(
+          id: player.id,
+          matchId: player.matchId,
+          profileId: player.profileId,
+          status: player.status,
+          team: player.team,
+          pitchX: null,
+          pitchY: null,
+          hasCar: player.hasCar,
+          carSeats: player.carSeats,
+          profile: player.profile,
+        );
+      }
+    });
+
+    try {
+      // Repository needs a method to clear position.
+      // updatePlayerPosition takes double x, double y. Not nullable?
+      // I should check `MatchRepository`.
+      // If Supabase table allows null, I can send null.
+      // But `updatePlayerPosition` might require doubles.
+      await _repository.clearPlayerPosition(player.id);
+    } catch (e) {
+      _fetchMatchDetails();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error clearing position: $e')));
+      }
+    }
+  }
 }
