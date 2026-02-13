@@ -181,17 +181,31 @@ class _TacticalBoardWidgetState extends State<TacticalBoardWidget> {
       widget.onPlayerMovedPitch!(details.data, newX, newY);
     }
 
-    // Auto-detect team based on side (optional, logic depends on horizontal vs vertical)
-    // If embedded (horizontal), Left = A, Right = B.
-    // If full screen (vertical), Top = A, Bottom = B?
-    // Let's assume Pitch Logic dictates side.
-    // For now, Pitch Painting logic:
-    // Vertical: Top / Bottom
-    // Horizontal: Left / Right
-    // Let's leave team assignment manual or based on zones if required later.
-    // The current auto-balance assigns teams. Dragging just updates position.
-    // If we want to change team by dragging across centerline, we can add that logic.
-    // Keeping it simple: Position update only.
+    // Auto-detect team based on side
+    final bool isVertical = h > w;
+    Team? newTeam;
+
+    if (isVertical) {
+      // Vertical: Top (0.0 - 0.5) = Team B, Bottom (0.5 - 1.0) = Team A
+      if (newY < 0.5) {
+        newTeam = Team.B;
+      } else {
+        newTeam = Team.A;
+      }
+    } else {
+      // Horizontal: Left (0.0 - 0.5) = Team A, Right (0.5 - 1.0) = Team B
+      if (newX < 0.5) {
+        newTeam = Team.A;
+      } else {
+        newTeam = Team.B;
+      }
+    }
+
+    // Only update if changed and team is not null (game mode might have no teams?)
+    // Assuming Team enum is always valid if we are on tactical board.
+    if (newTeam != details.data.team) {
+      widget.onPlayerMovedTeam(details.data, newTeam);
+    }
   }
 }
 
