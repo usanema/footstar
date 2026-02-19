@@ -6,9 +6,11 @@ import 'package:footstars/features/explore/presentation/widgets/match_search_car
 import 'package:footstars/features/explore/presentation/widgets/group_search_card.dart';
 import 'package:footstars/features/explore/presentation/widgets/player_search_card.dart';
 import 'package:footstars/features/matches/data/models/match_model.dart';
+import 'package:footstars/features/matches/presentation/match_details_screen.dart';
 import 'package:footstars/features/groups/data/models/group_model.dart';
 import 'package:footstars/features/groups/presentation/group_details_screen.dart';
 import 'package:footstars/features/onboarding/data/models/profile_model.dart';
+import 'package:footstars/features/profile/presentation/player_profile_view_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -228,9 +230,12 @@ class _ExploreScreenState extends State<ExploreScreen>
         return MatchSearchCard(
           match: match,
           onTap: () {
-            // TODO: Navigate to match details
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Match details coming soon')),
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    MatchDetailsScreen(match: match, isAdmin: false),
+              ),
             );
           },
         );
@@ -288,9 +293,11 @@ class _ExploreScreenState extends State<ExploreScreen>
         return PlayerSearchCard(
           player: player,
           onTap: () {
-            // TODO: Navigate to player profile
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Player profile coming soon')),
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PlayerProfileViewScreen(player: player),
+              ),
             );
           },
         );
