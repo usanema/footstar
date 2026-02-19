@@ -96,6 +96,10 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         _currentUserMember?.status == GroupMemberStatus.ACCEPTED;
   }
 
+  bool get _isAcceptedMember {
+    return _currentUserMember?.status == GroupMemberStatus.ACCEPTED;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,7 +122,9 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                     const SizedBox(height: 24),
                     _buildMatchesSection(),
                     const SizedBox(height: 24),
-                    _buildMembersList(),
+                    _isAcceptedMember
+                        ? _buildMembersList()
+                        : _buildMembersLockedSection(),
                   ],
                 ),
               ),
@@ -302,6 +308,44 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             },
           ),
       ],
+    );
+  }
+
+  /// Shown to non-members in place of the full member list.
+  Widget _buildMembersLockedSection() {
+    final count =
+        _members?.where((m) => m.status == GroupMemberStatus.ACCEPTED).length ??
+        0;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lock_outline, color: Colors.grey[500], size: 28),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Members ($count)',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Join the group to see who\'s a member.',
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
