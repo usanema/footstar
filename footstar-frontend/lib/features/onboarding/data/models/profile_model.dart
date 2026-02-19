@@ -25,6 +25,8 @@ class ProfileModel {
   // Stats
   final int strMatchesPlayed;
   final int strMatchesWon;
+  final int strMatchesDrawn;
+  final int strMatchesLost;
   final int strGoalsScored;
 
   ProfileModel({
@@ -49,6 +51,8 @@ class ProfileModel {
     this.favoritePlayer,
     this.strMatchesPlayed = 0,
     this.strMatchesWon = 0,
+    this.strMatchesDrawn = 0,
+    this.strMatchesLost = 0,
     this.strGoalsScored = 0,
   });
 
@@ -75,6 +79,8 @@ class ProfileModel {
       favoritePlayer: json['favorite_player'] as String?,
       strMatchesPlayed: json['str_matches_played'] as int? ?? 0,
       strMatchesWon: json['str_matches_won'] as int? ?? 0,
+      strMatchesDrawn: json['str_matches_drawn'] as int? ?? 0,
+      strMatchesLost: json['str_matches_lost'] as int? ?? 0,
       strGoalsScored: json['str_goals_scored'] as int? ?? 0,
     );
   }
@@ -102,11 +108,14 @@ class ProfileModel {
       'favorite_player': favoritePlayer,
       'str_matches_played': strMatchesPlayed,
       'str_matches_won': strMatchesWon,
+      'str_matches_drawn': strMatchesDrawn,
+      'str_matches_lost': strMatchesLost,
       'str_goals_scored': strGoalsScored,
     };
   }
 
-  // Helper to calculate total points (Basic sum, logic uses weighted service)
+  // --- Computed helpers ---
+
   int get totalPoints =>
       speed +
       technique +
@@ -116,4 +125,29 @@ class ProfileModel {
       tactics +
       vision +
       charisma;
+
+  double get winRate =>
+      strMatchesPlayed > 0 ? strMatchesWon / strMatchesPlayed : 0.0;
+
+  double get goalsPerMatch =>
+      strMatchesPlayed > 0 ? strGoalsScored / strMatchesPlayed : 0.0;
+
+  List<String> get positions {
+    return [
+      positionPrimary,
+      positionSecondary,
+      positionTertiary,
+    ].whereType<String>().toList();
+  }
+
+  Map<String, int> get skillsMap => {
+    'Speed': speed,
+    'Tech': technique,
+    'Stamina': stamina,
+    'Defense': defense,
+    'Shoot': shooting,
+    'Tactics': tactics,
+    'Vision': vision,
+    'Charisma': charisma,
+  };
 }

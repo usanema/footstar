@@ -1,3 +1,18 @@
+enum MatchResult { WIN_A, WIN_B, DRAW, NOT_PLAYED }
+
+MatchResult matchResultFromString(String? s) {
+  switch (s) {
+    case 'WIN_A':
+      return MatchResult.WIN_A;
+    case 'WIN_B':
+      return MatchResult.WIN_B;
+    case 'DRAW':
+      return MatchResult.DRAW;
+    default:
+      return MatchResult.NOT_PLAYED;
+  }
+}
+
 class MatchModel {
   final String id;
   final String groupId;
@@ -9,6 +24,7 @@ class MatchModel {
   final bool isRecurring;
   final String? recurrencePattern;
   final DateTime createdAt;
+  final MatchResult result;
 
   MatchModel({
     required this.id,
@@ -21,6 +37,7 @@ class MatchModel {
     required this.isRecurring,
     this.recurrencePattern,
     required this.createdAt,
+    this.result = MatchResult.NOT_PLAYED,
   });
 
   factory MatchModel.fromMap(Map<String, dynamic> map) {
@@ -35,6 +52,7 @@ class MatchModel {
       isRecurring: map['is_recurring'] ?? false,
       recurrencePattern: map['recurrence_pattern'],
       createdAt: DateTime.parse(map['created_at']),
+      result: matchResultFromString(map['result'] as String?),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../dashboard_screen.dart';
 import '../../../explore/presentation/explore_screen.dart';
+import '../../../profile/presentation/profile_screen.dart';
 
 enum TabItem { home, explore, profile }
 
@@ -31,12 +32,7 @@ class TabNavigator extends StatelessWidget {
       case TabItem.explore:
         return const ExploreScreen();
       case TabItem.profile:
-        return const Center(
-          child: Text(
-            'Profile & Stats',
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          ),
-        );
+        return const ProfileScreen();
     }
   }
 }
