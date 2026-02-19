@@ -1,210 +1,101 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+/// A sleek, modern gradient background for the login screen.
+///
+/// Replaces the literal stadium imagery with a premium abstract aesthetic
+/// using the app's brand colors (Emerald Green, Gold, Deep Black).
 class StadiumBackground extends StatelessWidget {
   const StadiumBackground({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Colors from the CSS
-    const pitchBlack = Color(0xFF0B0C10);
-    const grassLight = Color.fromRGBO(16, 137, 62, 0.15);
-    const grassLine = Color.fromRGBO(0, 112, 37, 0.5);
-    const lightGlow = Color.fromRGBO(0, 112, 37, 0.15);
+    const deepVoid = Color(0xFF05070A); // Almost black
+    const emerald = Color(0xFF00A86B);
+    const gold = Color(0xFFFFD700);
 
     return Container(
-      color: pitchBlack,
+      color: deepVoid,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // --- 1. VIGNETTE BACKGROUND ---
-          DecoratedBox(
+          // 1. Base subtle emerald pulse from bottom-left
+          Positioned(
+            bottom: -200,
+            left: -200,
+            width: 600,
+            height: 600,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [emerald.withOpacity(0.2), Colors.transparent],
+                  stops: const [0.0, 0.7],
+                ),
+              ),
+            ),
+          ),
+
+          // 2. Subtle gold glow from top-right (suggesting victory/light)
+          Positioned(
+            top: -150,
+            right: -150,
+            width: 500,
+            height: 500,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [gold.withOpacity(0.15), Colors.transparent],
+                  stops: const [0.0, 0.7],
+                ),
+              ),
+            ),
+          ),
+
+          // 3. Main atmospheric overlay (Vignette + Noise simulation)
+          // Using a gradient that darkens edges to focus attention on center content
+          const DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                center: const Alignment(0, -0.4), // approx 50% 30%
-                radius: 1.2,
+                center: Alignment.center,
+                radius: 1.0,
                 colors: [
-                  const Color(0xFF151922),
-                  pitchBlack.withOpacity(0.8), // Smooth blend
+                  Colors.transparent,
+                  Color(0xFF000000), // Pure black vignette
                 ],
-                stops: const [0.0, 0.8],
+                stops: [0.6, 1.0],
               ),
             ),
           ),
 
-          // --- 2. FLOODLIGHTS ---
-          // Left Light
-          Positioned(
-            top: -150,
-            left: -100, // approximated -50% width
-            right: 100, // extend width
-            height: 800,
-            child: Transform.rotate(
-              angle: 25 * (math.pi / 180),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.center,
-                    radius: 0.8,
-                    colors: [
-                      Colors.white.withOpacity(0.12),
-                      lightGlow,
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.4, 0.7],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Right Light
-          Positioned(
-            top: -150,
-            right: -100,
-            left: 100,
-            height: 800,
-            child: Transform.rotate(
-              angle: -25 * (math.pi / 180),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.center,
-                    radius: 0.8,
-                    colors: [
-                      Colors.white.withOpacity(0.12),
-                      lightGlow,
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.4, 0.7],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // --- 3. 3D PITCH PERSPECTIVE ---
-          Positioned(
-            top:
-                250, // Moved down to simulate "bottom: -10%" relative to typical screen
-            // or we use bottom positioning if we want it anchored there
-            bottom: -100,
-            left: -100,
-            right: -100,
-            child: Transform(
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.001) // Perspective
-                ..rotateX(
-                  1.1,
-                ), // ~63 deg, 75 might be too extreme for this view height
-              alignment: Alignment.topCenter,
-              child: CustomPaint(
-                painter: _PitchPainter(
-                  lineColor: grassLine,
-                  grassColor: grassLight,
-                ),
-              ),
-            ),
-          ),
-
-          // --- 4. FOG OVERLAY ---
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFF0B0C10).withOpacity(0.1),
-                    const Color(0xFF0B0C10).withOpacity(0.6),
-                    pitchBlack.withOpacity(0.9),
-                  ],
-                  stops: const [0.0, 0.5, 0.9],
-                ),
-              ),
-            ),
-          ),
+          // 4. Mesh/Grid overlay (Optional technical feel)
+          // Very subtle pattern to break the flatness
+          CustomPaint(painter: _SubtleGridPainter()),
         ],
       ),
     );
   }
 }
 
-class _PitchPainter extends CustomPainter {
-  final Color lineColor;
-  final Color grassColor;
-
-  _PitchPainter({required this.lineColor, required this.grassColor});
-
+class _SubtleGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0
-      ..color = lineColor;
+      ..color = Colors.white.withOpacity(0.03)
+      ..strokeWidth = 1;
 
-    final fillPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = grassColor;
+    const double spacing = 40.0;
 
-    // Draw Grass Stripes (Horizontal)
-    // Simulates repeating-linear-gradient(90deg, transparent 0, transparent 49px, rgba... 50px)
-    // but typically grass stripes on a pitch are horizontal or vertical.
-    // The CSS had `repeating-linear-gradient(90deg...)` which makes VERTICAL stripes.
-    // Let's draw vertical stripes.
-    double stripeWidth = 50.0;
-    for (double x = 0; x < size.width; x += stripeWidth * 2) {
-      canvas.drawRect(
-        Rect.fromLTWH(x + stripeWidth, 0, stripeWidth, size.height),
-        fillPaint,
-      );
+    // Draw vertical lines
+    for (double x = 0; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
     }
 
-    // Draw Outer Border
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
-
-    // Draw Half Line
-    canvas.drawLine(
-      Offset(0, size.height / 2),
-      Offset(size.width, size.height / 2),
-      paint,
-    );
-
-    // Draw Center Circle
-    canvas.drawCircle(
-      Offset(size.width / 2, size.height / 2),
-      200, // Radius matching CSS width/2
-      paint,
-    );
-
-    // Draw Penalty Area (Top - mimics CSS "top: -2px")
-    // In CSS it was top: -2px, meaning it attached to the top border.
-    // But a half-pitch view usually implies we are looking at one goal.
-    // The CSS has `half-line` at `top: 50%`. So this is a full pitch view?
-    // CSS "penalty-area" was `top: -2px`. So it's at the very top of the div.
-    double penaltyWidth = size.width * 0.4;
-    double penaltyHeight = size.height * 0.15;
-
-    // Top Goal Area
-    canvas.drawRect(
-      Rect.fromLTWH(
-        (size.width - penaltyWidth) / 2,
-        0,
-        penaltyWidth,
-        penaltyHeight,
-      ),
-      paint,
-    );
-
-    // Bottom Goal Area (Mirror for symmetry if we assume full pitch)
-    canvas.drawRect(
-      Rect.fromLTWH(
-        (size.width - penaltyWidth) / 2,
-        size.height - penaltyHeight,
-        penaltyWidth,
-        penaltyHeight,
-      ),
-      paint,
-    );
+    // Draw horizontal lines
+    for (double y = 0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
   }
 
   @override
