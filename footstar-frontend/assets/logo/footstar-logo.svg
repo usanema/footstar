@@ -1,7 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130">
 
-  
-  <path d="M 10 10 L 130 10 L 123 30 L 35 30 L 35 50 L 70 50 L 93 70 L 35 70 L 35 120 L 10 120 Z" fill="#00A86B"/>
-  
-  <path d="M 130 10 L 145 50 L 190 50 L 155 80 L 165 120 L 130 100 L 95 120 L 105 80 L 70 50 L 115 50 Z" fill="#FFD700"/>
+  <defs>
+    <!-- Gradient for F: vibrant emerald with depth -->
+    <linearGradient id="grassGradient" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#00E08A"/>
+      <stop offset="45%" stop-color="#00A86B"/>
+      <stop offset="100%" stop-color="#005C3A"/>
+    </linearGradient>
+
+    <!-- Metallic gold gradient for Star -->
+    <linearGradient id="goldGradient" x1="0.1" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#FFF176"/>
+      <stop offset="30%" stop-color="#FFD700"/>
+      <stop offset="60%" stop-color="#F5B800"/>
+      <stop offset="100%" stop-color="#C49000"/>
+    </linearGradient>
+
+    <!-- Shine overlay for metallic effect on star -->
+    <linearGradient id="starShine" x1="0.3" y1="0" x2="0.7" y2="0.6">
+      <stop offset="0%" stop-color="white" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="white" stop-opacity="0"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- F letter: emerald gradient -->
+  <path d="M 10 10 L 130 10 L 123 30 L 35 30 L 35 50 L 70 50 L 93 70 L 35 70 L 35 120 L 10 120 Z" 
+        fill="url(#grassGradient)"/>
+
+  <!-- Star: metallic gold gradient -->
+  <path d="M 130 10 L 145 50 L 190 50 L 155 80 L 165 120 L 130 100 L 95 120 L 105 80 L 70 50 L 115 50 Z" 
+        fill="url(#goldGradient)"/>
+
+  <!-- Star shine overlay: metallic highlight -->
+  <path d="M 130 10 L 145 50 L 190 50 L 155 80 L 165 120 L 130 100 L 95 120 L 105 80 L 70 50 L 115 50 Z" 
+        fill="url(#starShine)"/>
 </svg>

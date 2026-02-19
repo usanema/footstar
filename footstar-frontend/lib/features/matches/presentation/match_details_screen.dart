@@ -46,36 +46,49 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
   }
 
   bool _isAdmin = false;
+  bool _isMember = false; // true when user is ACCEPTED group member
 
   @override
   void initState() {
     super.initState();
     _currentUserId = Supabase.instance.client.auth.currentUser?.id;
     _isAdmin = widget.isAdmin;
-    if (!_isAdmin) {
-      _checkAdminStatus();
+    if (widget.isAdmin) {
+      // If admin flag is pre-set, user is obviously a member.
+      _isMember = true;
+    } else {
+      _checkMembershipAndAdminStatus();
     }
     _fetchMatchDetails();
   }
 
-  Future<void> _checkAdminStatus() async {
+  Future<void> _checkMembershipAndAdminStatus() async {
     if (_currentUserId == null) return;
     try {
       final response = await Supabase.instance.client
           .from('group_members')
-          .select('role')
+          .select('role, status')
           .eq('group_id', widget.match.groupId)
           .eq('profile_id', _currentUserId!)
           .maybeSingle();
 
-      if (response != null && mounted) {
-        final role = response['role'] as String;
-        if (role == 'ADMIN') {
-          setState(() => _isAdmin = true);
+      if (mounted) {
+        if (response != null) {
+          final role = response['role'] as String;
+          final status = response['status'] as String;
+          setState(() {
+            _isMember = status == 'ACCEPTED';
+            _isAdmin = role == 'ADMIN' && status == 'ACCEPTED';
+          });
+        } else {
+          setState(() {
+            _isMember = false;
+            _isAdmin = false;
+          });
         }
       }
     } catch (e) {
-      debugPrint('Error checking admin status: $e');
+      debugPrint('Error checking membership: $e');
     }
   }
 
@@ -275,78 +288,114 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                   onCheckIn: () => _updateStatus(PlayerStatus.IN),
                 ),
               ),
-              const SizedBox(height: 24),
+              // --- MEMBER-ONLY CONTENT ---
+              if (_isMember) ...[
+                const SizedBox(height: 24),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: StatusSelector(
-                  currentStatus: currentStatus,
-                  isLoading: _isLoading,
-                  onStatusChanged: (newStatus) => _updateStatus(newStatus),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // 3. Player List (The Squad) - Optional, maybe remove if redundant with Bench?
-              // The plan says "Embed Team Lists (Home/Away)" -> maybe Bench covers "unplaced".
-              // But what about "placed" players list?
-              // Existing 'PlayerListCard' shows everyone IN.
-              // Let's keep it for now as a "Roster".
-              if (_currentUserId != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: PlayerListCard(
-                    players: inPlayers,
-                    currentUserId: _currentUserId!,
-                    onToggleCar: (val) => _toggleCar(val),
-                    onUpdateSeats: (seats) => _updateSeats(seats),
-                    maxPlayers: widget.match.maxPlayers,
+                  child: StatusSelector(
+                    currentStatus: currentStatus,
+                    isLoading: _isLoading,
+                    onStatusChanged: (newStatus) => _updateStatus(newStatus),
                   ),
                 ),
-              if (_currentUserId != null) const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // 4. Tactical Board (Pitch)
-              if (placedPlayers.isNotEmpty || unplacedPlayers.isNotEmpty) ...[
-                TacticalBoardWidget(
-                  players: placedPlayers,
-                  isAdmin: _isAdmin,
-                  currentUserId: _currentUserId,
-                  onPlayerMovedTeam: _onPlayerMoved,
-                  onPlayerMovedPitch: _updatePosition,
-                  onExpand: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TacticalBoardWidget(
-                          players: placedPlayers,
-                          isAdmin: _isAdmin,
-                          currentUserId: _currentUserId, // Passed here
-                          isFullScreen: true,
-                          onPlayerMovedTeam: _onPlayerMoved,
-                          onPlayerMovedPitch: _updatePosition,
-                        ),
-                      ),
-                    ).then((_) => _fetchMatchDetails());
-                  },
-                ),
+                if (_currentUserId != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: PlayerListCard(
+                      players: inPlayers,
+                      currentUserId: _currentUserId!,
+                      onToggleCar: (val) => _toggleCar(val),
+                      onUpdateSeats: (seats) => _updateSeats(seats),
+                      maxPlayers: widget.match.maxPlayers,
+                    ),
+                  ),
+                if (_currentUserId != null) const SizedBox(height: 24),
 
-                const SizedBox(height: 16),
-
-                // 5. Bench (Unplaced)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: BenchWidget(
-                    players: unplacedPlayers,
+                if (placedPlayers.isNotEmpty || unplacedPlayers.isNotEmpty) ...[
+                  TacticalBoardWidget(
+                    players: placedPlayers,
                     isAdmin: _isAdmin,
                     currentUserId: _currentUserId,
-                    onPlayerDropped: _clearPosition,
+                    onPlayerMovedTeam: _onPlayerMoved,
+                    onPlayerMovedPitch: _updatePosition,
+                    onExpand: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TacticalBoardWidget(
+                            players: placedPlayers,
+                            isAdmin: _isAdmin,
+                            currentUserId: _currentUserId,
+                            isFullScreen: true,
+                            onPlayerMovedTeam: _onPlayerMoved,
+                            onPlayerMovedPitch: _updatePosition,
+                          ),
+                        ),
+                      ).then((_) => _fetchMatchDetails());
+                    },
                   ),
+
+                  const SizedBox(height: 16),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: BenchWidget(
+                      players: unplacedPlayers,
+                      isAdmin: _isAdmin,
+                      currentUserId: _currentUserId,
+                      onPlayerDropped: _clearPosition,
+                    ),
+                  ),
+                ],
+              ] else ...[
+                // Non-member banner
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: _buildNonMemberBanner(),
                 ),
               ],
               const SizedBox(height: 100),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Banner shown to users who are not accepted members of this group.
+  Widget _buildNonMemberBanner() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.lock_outline, color: AppColors.primary, size: 40),
+          const SizedBox(height: 12),
+          Text(
+            'Members Only',
+            style: AppTextStyles.headlineSmall.copyWith(
+              color: AppColors.primary,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Join the group to declare attendance, see the roster and tactical board.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }
