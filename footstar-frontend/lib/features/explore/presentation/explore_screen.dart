@@ -10,7 +10,10 @@ import 'package:footstars/features/matches/presentation/match_details_screen.dar
 import 'package:footstars/features/groups/data/models/group_model.dart';
 import 'package:footstars/features/groups/presentation/group_details_screen.dart';
 import 'package:footstars/features/onboarding/data/models/profile_model.dart';
-import 'package:footstars/features/profile/presentation/player_profile_view_screen.dart';
+import 'package:footstars/features/profile/presentation/profile_screen.dart';
+import 'package:footstars/features/venues/data/models/venue_model.dart';
+import 'package:footstars/features/venues/presentation/venue_details_screen.dart';
+import 'package:footstars/features/venues/presentation/widgets/venue_search_card.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -31,11 +34,12 @@ class _ExploreScreenState extends State<ExploreScreen>
   List<MatchModel> _matches = [];
   List<GroupModel> _groups = [];
   List<ProfileModel> _players = [];
+  List<VenueModel> _venues = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -60,36 +64,37 @@ class _ExploreScreenState extends State<ExploreScreen>
         _matches = [];
         _groups = [];
         _players = [];
+        _venues = [];
         _isLoading = false;
       });
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final results = await Future.wait([
         _searchRepository.searchMatches(query),
         _searchRepository.searchGroups(query),
         _searchRepository.searchPlayers(query),
+        _searchRepository.searchVenues(query),
       ]);
 
-      setState(() {
-        _matches = results[0] as List<MatchModel>;
-        _groups = results[1] as List<GroupModel>;
-        _players = results[2] as List<ProfileModel>;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        setState(() {
+          _matches = results[0] as List<MatchModel>;
+          _groups = results[1] as List<GroupModel>;
+          _players = results[2] as List<ProfileModel>;
+          _venues = results[3] as List<VenueModel>;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Search failed: $e')));
+        ).showSnackBar(SnackBar(content: Text('Błąd wyszukiwania: $e')));
       }
     }
   }
@@ -113,14 +118,14 @@ class _ExploreScreenState extends State<ExploreScreen>
             children: [
               // Search Field
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: TextField(
                   controller: _searchController,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textPrimary,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Search matches, groups, or players...',
+                    hintText: 'Szukaj meczów, grup, graczy, boisk...',
                     hintStyle: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -131,9 +136,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                               Icons.clear,
                               color: AppColors.textSecondary,
                             ),
-                            onPressed: () {
-                              _searchController.clear();
-                            },
+                            onPressed: () => _searchController.clear(),
                           )
                         : null,
                     filled: true,
@@ -158,37 +161,13 @@ class _ExploreScreenState extends State<ExploreScreen>
               // Tabs
               TabBar(
                 controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 tabs: [
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.sports_soccer, size: 18),
-                        const SizedBox(width: 4),
-                        Text('Matches (${_matches.length})'),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.group, size: 18),
-                        const SizedBox(width: 4),
-                        Text('Groups (${_groups.length})'),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.person, size: 18),
-                        const SizedBox(width: 4),
-                        Text('Players (${_players.length})'),
-                      ],
-                    ),
-                  ),
+                  _buildTab(Icons.sports_soccer, 'Mecze', _matches.length),
+                  _buildTab(Icons.group, 'Grupy', _groups.length),
+                  _buildTab(Icons.person, 'Gracze', _players.length),
+                  _buildTab(Icons.stadium, 'Boiska', _venues.length),
                 ],
               ),
             ],
@@ -203,8 +182,22 @@ class _ExploreScreenState extends State<ExploreScreen>
                 _buildMatchesList(),
                 _buildGroupsList(),
                 _buildPlayersList(),
+                _buildVenuesList(),
               ],
             ),
+    );
+  }
+
+  Tab _buildTab(IconData icon, String label, int count) {
+    return Tab(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 4),
+          Text('$label${_searchController.text.isNotEmpty ? " ($count)" : ""}'),
+        ],
+      ),
     );
   }
 
@@ -212,32 +205,27 @@ class _ExploreScreenState extends State<ExploreScreen>
     if (_searchController.text.isEmpty) {
       return _buildEmptyState(
         icon: Icons.search,
-        message: 'Start typing to search for matches',
+        message: 'Wpisz frazę, aby wyszukać mecze',
       );
     }
-
     if (_matches.isEmpty) {
       return _buildEmptyState(
         icon: Icons.sports_soccer,
-        message: 'No matches found',
+        message: 'Brak meczów',
       );
     }
-
     return ListView.builder(
       itemCount: _matches.length,
       itemBuilder: (context, index) {
         final match = _matches[index];
         return MatchSearchCard(
           match: match,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    MatchDetailsScreen(match: match, isAdmin: false),
-              ),
-            );
-          },
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MatchDetailsScreen(match: match, isAdmin: false),
+            ),
+          ),
         );
       },
     );
@@ -247,28 +235,22 @@ class _ExploreScreenState extends State<ExploreScreen>
     if (_searchController.text.isEmpty) {
       return _buildEmptyState(
         icon: Icons.search,
-        message: 'Start typing to search for groups',
+        message: 'Wpisz frazę, aby wyszukać grupy',
       );
     }
-
     if (_groups.isEmpty) {
-      return _buildEmptyState(icon: Icons.group, message: 'No groups found');
+      return _buildEmptyState(icon: Icons.group, message: 'Brak grup');
     }
-
     return ListView.builder(
       itemCount: _groups.length,
       itemBuilder: (context, index) {
         final group = _groups[index];
         return GroupSearchCard(
           group: group,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => GroupDetailsScreen(group: group),
-              ),
-            );
-          },
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => GroupDetailsScreen(group: group)),
+          ),
         );
       },
     );
@@ -278,28 +260,49 @@ class _ExploreScreenState extends State<ExploreScreen>
     if (_searchController.text.isEmpty) {
       return _buildEmptyState(
         icon: Icons.search,
-        message: 'Start typing to search for players',
+        message: 'Wpisz frazę, aby wyszukać graczy',
       );
     }
-
     if (_players.isEmpty) {
-      return _buildEmptyState(icon: Icons.person, message: 'No players found');
+      return _buildEmptyState(icon: Icons.person, message: 'Brak graczy');
     }
-
     return ListView.builder(
       itemCount: _players.length,
       itemBuilder: (context, index) {
         final player = _players[index];
         return PlayerSearchCard(
           player: player,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PlayerProfileViewScreen(player: player),
-              ),
-            );
-          },
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProfileScreen(profileId: player.id),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildVenuesList() {
+    if (_searchController.text.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.stadium,
+        message: 'Wpisz frazę, aby wyszukać boiska',
+      );
+    }
+    if (_venues.isEmpty) {
+      return _buildEmptyState(icon: Icons.stadium, message: 'Brak boisk');
+    }
+    return ListView.builder(
+      itemCount: _venues.length,
+      itemBuilder: (context, index) {
+        final venue = _venues[index];
+        return VenueSearchCard(
+          venue: venue,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => VenueDetailsScreen(venue: venue)),
+          ),
         );
       },
     );
