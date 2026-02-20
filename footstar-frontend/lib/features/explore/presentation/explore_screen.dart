@@ -10,7 +10,7 @@ import 'package:footstars/features/matches/presentation/match_details_screen.dar
 import 'package:footstars/features/groups/data/models/group_model.dart';
 import 'package:footstars/features/groups/presentation/group_details_screen.dart';
 import 'package:footstars/features/onboarding/data/models/profile_model.dart';
-import 'package:footstars/features/profile/presentation/profile_screen.dart';
+import 'package:footstars/features/profile/presentation/player_profile_view_screen.dart';
 import 'package:footstars/features/venues/data/models/venue_model.dart';
 import 'package:footstars/features/venues/presentation/venue_details_screen.dart';
 import 'package:footstars/features/venues/presentation/widgets/venue_search_card.dart';
@@ -275,7 +275,7 @@ class _ExploreScreenState extends State<ExploreScreen>
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ProfileScreen(profileId: player.id),
+              builder: (_) => PlayerProfileViewScreen(player: player),
             ),
           ),
         );
