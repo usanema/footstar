@@ -25,6 +25,7 @@ class MatchModel {
   final String? recurrencePattern;
   final DateTime createdAt;
   final MatchResult result;
+  final String? venueId;
 
   MatchModel({
     required this.id,
@@ -38,6 +39,7 @@ class MatchModel {
     this.recurrencePattern,
     required this.createdAt,
     this.result = MatchResult.NOT_PLAYED,
+    this.venueId,
   });
 
   factory MatchModel.fromMap(Map<String, dynamic> map) {
@@ -53,6 +55,7 @@ class MatchModel {
       recurrencePattern: map['recurrence_pattern'],
       createdAt: DateTime.parse(map['created_at']),
       result: matchResultFromString(map['result'] as String?),
+      venueId: map['venue_id'] as String?,
     );
   }
 
@@ -65,6 +68,7 @@ class MatchModel {
       'description': description,
       'is_recurring': isRecurring,
       'recurrence_pattern': recurrencePattern,
+      if (venueId != null) 'venue_id': venueId,
     };
   }
 }

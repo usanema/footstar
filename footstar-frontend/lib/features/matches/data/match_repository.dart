@@ -13,6 +13,7 @@ class MatchRepository {
     String? description,
     bool isRecurring = false,
     String? recurrencePattern,
+    String? venueId,
   }) async {
     await _supabase.from('matches').insert({
       'group_id': groupId,
@@ -22,6 +23,7 @@ class MatchRepository {
       'description': description,
       'is_recurring': isRecurring,
       'recurrence_pattern': recurrencePattern,
+      if (venueId != null) 'venue_id': venueId,
     });
   }
 

@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../matches/data/models/match_model.dart';
 import '../../groups/data/models/group_model.dart';
 import '../../onboarding/data/models/profile_model.dart';
+import '../../venues/data/models/venue_model.dart';
 
 class SearchRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -78,6 +79,24 @@ class SearchRepository {
       return (response as List).map((e) => ProfileModel.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Failed to search players: $e');
+    }
+  }
+
+  /// Search for venues by name, city or address
+  Future<List<VenueModel>> searchVenues(String query) async {
+    if (query.isEmpty) return [];
+
+    try {
+      final response = await _supabase
+          .from('venues')
+          .select()
+          .or('name.ilike.%$query%,address.ilike.%$query%,city.ilike.%$query%')
+          .order('name', ascending: true)
+          .limit(20);
+
+      return (response as List).map((e) => VenueModel.fromMap(e)).toList();
+    } catch (e) {
+      throw Exception('Failed to search venues: $e');
     }
   }
 }

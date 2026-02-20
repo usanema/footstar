@@ -11,7 +11,10 @@ import 'package:footstars/features/profile/presentation/widgets/profile_header_w
 import 'package:footstars/features/profile/presentation/widgets/stats_grid_widget.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final String?
+  profileId; // null = current user, non-null = other player (read-only)
+
+  const ProfileScreen({super.key, this.profileId});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -24,6 +27,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<PlayerMatchResultModel> _lastMatches = [];
   bool _isLoading = true;
   String? _error;
+
+  bool get _isViewingOther => widget.profileId != null;
+
+  String? get _targetUserId =>
+      widget.profileId ?? Supabase.instance.client.auth.currentUser?.id;
 
   @override
   void initState() {
@@ -38,7 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
+      final userId = _targetUserId;
       if (userId == null) {
         setState(() {
           _error = 'Nie jesteś zalogowany';
@@ -76,18 +84,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
+        leading: _isViewingOther ? const BackButton(color: Colors.white) : null,
         title: Text(
-          'Profil',
+          _isViewingOther ? 'Profil gracza' : 'Profil',
           style: AppTextStyles.headlineSmall.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
-          IconButton(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout, color: Colors.white54),
-            tooltip: 'Wyloguj',
-          ),
+          if (!_isViewingOther)
+            IconButton(
+              onPressed: _logout,
+              icon: const Icon(Icons.logout, color: Colors.white54),
+              tooltip: 'Wyloguj',
+            ),
         ],
       ),
       body: _isLoading
@@ -154,12 +164,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const _Divider(),
                     const SizedBox(height: 24),
 
-                    // 4. Badges
-                    BadgesWidget(profile: _profile!),
-
-                    const SizedBox(height: 24),
-                    const _Divider(),
-                    const SizedBox(height: 24),
+                    // 4. Badges (own profile only)
+                    if (!_isViewingOther) ...[
+                      BadgesWidget(profile: _profile!),
+                      const SizedBox(height: 24),
+                      const _Divider(),
+                      const SizedBox(height: 24),
+                    ],
 
                     // 5. Radar chart
                     Text(
