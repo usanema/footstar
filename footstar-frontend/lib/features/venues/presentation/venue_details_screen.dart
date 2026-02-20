@@ -214,10 +214,7 @@ class _MatchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat(
-      'EEE, d MMM • HH:mm',
-      'pl_PL',
-    ).format(match.date);
+    final dateStr = DateFormat('EEE, d MMM • HH:mm').format(match.date);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
