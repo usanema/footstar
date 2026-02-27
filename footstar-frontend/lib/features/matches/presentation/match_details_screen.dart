@@ -12,6 +12,7 @@ import 'package:footstars/core/app_theme.dart';
 import 'widgets/match_hero_section.dart';
 import 'widgets/status_selector.dart';
 import 'widgets/player_list_card.dart';
+import 'widgets/weather_widget.dart';
 
 class MatchDetailsScreen extends StatefulWidget {
   final MatchModel match;
@@ -287,6 +288,11 @@ class _MatchDetailsScreenState extends State<MatchDetailsScreen> {
                   userStatus: currentStatus,
                   onCheckIn: () => _updateStatus(PlayerStatus.IN),
                 ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: WeatherWidget(match: widget.match),
               ),
               // --- MEMBER-ONLY CONTENT ---
               if (_isMember) ...[
