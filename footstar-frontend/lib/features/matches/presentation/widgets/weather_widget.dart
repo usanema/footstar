@@ -123,7 +123,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'POGODA NA MECZ',
+                'POGODA',
                 style: AppTextStyles.labelSmall.copyWith(
                   color: AppColors.primary,
                   letterSpacing: 1.2,
