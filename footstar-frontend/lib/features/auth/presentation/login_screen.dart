@@ -169,51 +169,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 24),
 
-                      // --- SOCIAL LOGIN ---
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Divider(
-                              color: AppColors.surface,
-                              thickness: 2,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('OR', style: AppTextStyles.bodySmall),
-                          ),
-                          Expanded(
-                            child: Divider(
-                              color: AppColors.surface,
-                              thickness: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.g_mobiledata, size: 28),
-                        label: const Text('SIGN IN WITH GOOGLE'),
-                        onPressed: () async {
-                          // Google Sign In Logic
-                          try {
-                            await _authRepository.signInWithGoogle();
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Google Sign-In Error: $e'),
-                                  backgroundColor: AppColors.error,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                      ),
-
-                      const SizedBox(height: 40),
-
                       // --- SIGN UP LINK ---
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
